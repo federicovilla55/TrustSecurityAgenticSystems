@@ -1,0 +1,56 @@
+from dataclasses import dataclass
+from typing import Optional, Set
+from ..enums import (Relation, RequestType, AgentRelations)
+
+
+@dataclass
+class SetupMessage:
+    """
+    Message sent by a user to after creating the account to setup
+    his agent with the information the user sends and the preferences for pairing other agents
+    """
+    content: str
+    user: str
+
+@dataclass
+class ConfigurationMessage:
+    """
+    Message sent by an agent to the orchestration to forward the processed information the user first sent
+    """
+    user: str
+    user_information: str
+    user_preferences: str
+    # maybe last two elements should be lists or dictionaries?
+
+@dataclass
+class PairingRequest:
+    """
+    Message sent by the orchestrator to an agent containing a pairing request for that agent from another agent
+    """
+    user: str
+    user_information: str
+
+@dataclass
+class PairingResponse:
+    """
+    Message sent by the orchestrator an agent to the orchestrator containing a response
+    for a pairing request
+    """
+    answer: Relation
+
+@dataclass
+class GetRequest:
+    """
+    Request to get information from the orchestrator's data
+    """
+    request_type: RequestType
+
+@dataclass
+class MatchedAgents:
+    """
+    Answer to the orchestrator get request
+    """
+    request_type: RequestType
+    agents_relation: Optional[AgentRelations] = None
+    registered_agents: Optional[Set[str]] = None
+    # more types should be added when the orchestrator will contain more information

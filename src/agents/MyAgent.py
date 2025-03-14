@@ -40,7 +40,7 @@ class MyAgent(RoutedAgent):
             cancellation_token=context.cancellation_token,
         )
 
-        print(f"{'*' * 20}\nPROMPT REQUEST: {[self._system_message, UserMessage(content=prompt, source=self._user)]}\n{'*' * 20}\n")
+        print(f"{'*' * 20}\nPROMPT REQUEST: {[self._system_message, UserMessage(content=prompt, source=self._user), UserMessage(content=user_information_prompt, source=self._user)]}\n{'*' * 20}\n")
         print(f"{'-' * 20}\n{self.id} ANSWER: {llm_answer.content}\n{'-' * 20}\n")
 
         result = remove_chain_of_thought(llm_answer.content)
@@ -128,8 +128,8 @@ class MyAgent(RoutedAgent):
                      Provide a reasoning for each policy if it was satisfied or not.
                     """
 
-        if message.feedback:
-            prompt += f"\nConsider this feedback: {message.feedback}."
+        if message.feedback != "":
+            prompt += f"\nConsider this feedback on a previous answer: {message.feedback}."
 
         user_information_prompt = f"These are {self.id}'s policies: {self._policies}.\nThese are {self.id}\npublic information: {self._public_information}.\nThese are {self.id} private information: {self._private_information}."
         # UserMessage(content=prompt, source=self._user),

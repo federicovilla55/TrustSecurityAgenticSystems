@@ -37,6 +37,7 @@ class OrchestratorAgent(RoutedAgent):
                 For each policy you have to check if the evaluation made is correct.
                 - Respond in the first line of your response with ONLY "VALID" if {receiver}'s reasoning is correct, with "INVALID" if some policy evaluation is wrong. 
                 - Provide a feedback in case the reasoning is invalid.
+                Consider only severe policy violations invalid. 
                 
                 These are {sender}'s public information: {sender_information}.
                 
@@ -66,32 +67,42 @@ class OrchestratorAgent(RoutedAgent):
                         (user_to_add, agent)) == Relation.UNCONTACTED:
                     print(f"Contacting: {agent}...")
 
-
-                    response_1 : PairingResponse = await self.send_message(
-                        PairingRequest(requester=user_to_add,
-                                       requester_information=agent_information_copy[user_to_add][0], ),
-                        AgentId("my_agent", agent)
-                    )
-                    check_1 = await self.check_response(user_to_add, agent, agent_information_copy[user_to_add][0], agent_information_copy[agent][1], response_1.reasoning)
-                    if 'VALID' in check_1.splitlines()[0]:
-                        matched_agents_copy[(agent, user_to_add)] = response_1.answer
-                    elif 'INVALID' in check_1.splitlines()[0]:
-                        print(f"INVALID. Now I should give a feedback to {agent}: {check_1}.\n")
-                    else:
-                        print(f"ERROR: Unknown answer when handling pairing request to {agent} from {user_to_add}...")
-
-                    response_2 : PairingResponse = await self.send_message(
-                        PairingRequest(requester=agent,
-                                       requester_information=agent_information_copy[agent][0], ),
-                        AgentId("my_agent", user_to_add)
-                    )
-                    check_2 = await self.check_response(agent, user_to_add, agent_information_copy[agent][0], agent_information_copy[user_to_add][1], response_2.reasoning)
-                    if 'VALID' in check_2.splitlines()[0]:
-                        matched_agents_copy[(user_to_add, agent)] = response_2.answer
-                    elif 'INVALID' in check_2.splitlines()[0]:
-                        print(f"INVALID. Now I should give a feedback to {user_to_add}: {check_2}.\n")
-                    else:
-                        print(f"ERROR: Unknown answer when handling pairing request to {user_to_add} from {agent}...")
+                    feedback = ""
+                    while True:
+                        response_1 : PairingResponse = await self.send_message(
+                            PairingRequest(requester=user_to_add,
+                                           requester_information=agent_information_copy[user_to_add][0], feedback=feedback),
+                            AgentId("my_agent", agent)
+                        )
+                        check_1 = await self.check_response(user_to_add, agent, agent_information_copy[user_to_add][0], agent_information_copy[agent][1], response_1.reasoning)
+                        if 'INVALID' in check_1.splitlines()[0]:
+                            print(f"INVALID. Now I should give a feedback to {agent} for connection with {user_to_add}: {check_1}.\n")
+                            feedback = f"Reasoning: {response_1.reasoning}\nFEEDBACK: {check_1.splitlines()[1:]}"
+                        elif 'VALID' in check_1.splitlines()[0]:
+                            print(f"VALID.\n")
+                            matched_agents_copy[(agent, user_to_add)] = response_1.answer
+                            break
+                        else:
+                            print(f"ERROR: Unknown answer when handling pairing request to {agent} from {user_to_add}...")
+                            break
+                    feedback = ""
+                    while True:
+                        response_2 : PairingResponse = await self.send_message(
+                            PairingRequest(requester=agent,
+                                           requester_information=agent_information_copy[agent][0], feedback=feedback),
+                            AgentId("my_agent", user_to_add)
+                        )
+                        check_2 = await self.check_response(agent, user_to_add, agent_information_copy[agent][0], agent_information_copy[user_to_add][1], response_2.reasoning)
+                        if 'INVALID' in check_2.splitlines()[0]:
+                            print(f"INVALID. Now I should give a feedback to {user_to_add} for connection with {agent}: {check_2}.\n")
+                            feedback = f"Reasoning: {response_2.reasoning}\nFEEDBACK: {check_2.splitlines()[1:]}"
+                        elif 'VALID' in check_2.splitlines()[0]:
+                            print(f"VALID.\n")
+                            matched_agents_copy[(user_to_add, agent)] = response_2.answer
+                            break
+                        else:
+                            print(f"ERROR: Unknown answer when handling pairing request to {user_to_add} from {agent}...")
+                            break
 
 
         async with self._agents_lock:

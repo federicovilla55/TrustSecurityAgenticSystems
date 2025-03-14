@@ -33,11 +33,13 @@ class OrchestratorAgent(RoutedAgent):
     async def check_response(self, sender : str, receiver : str, sender_information : str, receiver_policies : str, reasoning : str) -> str:
         prompt = f"""
                 You are the Policy Enforcement Orchestrator. 
-                Your job is to evaluate the reasoning {receiver} made on its policies based on {sender} public information.
-                For each policy you have to check if the evaluation made is correct.
+                Your job is to evaluate the reasoning {receiver} made.
+                - Your evaluation should not be too strictly.
+                - Your evalutation should not move away from the provided information.
+                - INVALID only if there are severe policy violations. 
+                - Policies and information cannot be further explained, corrected or modified.
                 - Respond in the first line of your response with ONLY "VALID" if {receiver}'s reasoning is correct, with "INVALID" if some policy evaluation is wrong. 
                 - Provide a feedback in case the reasoning is invalid.
-                Consider only severe policy violations invalid. 
                 
                 These are {sender}'s public information: {sender_information}.
                 
@@ -79,7 +81,7 @@ class OrchestratorAgent(RoutedAgent):
                             print(f"INVALID. Now I should give a feedback to {agent} for connection with {user_to_add}: {check_1}.\n")
                             feedback = f"Reasoning: {response_1.reasoning}\nFEEDBACK: {check_1.splitlines()[1:]}"
                         elif 'VALID' in check_1.splitlines()[0]:
-                            print(f"VALID.\n")
+                            print(f"VALID. {agent} for connection from {user_to_add}\n")
                             matched_agents_copy[(agent, user_to_add)] = response_1.answer
                             break
                         else:
@@ -97,7 +99,7 @@ class OrchestratorAgent(RoutedAgent):
                             print(f"INVALID. Now I should give a feedback to {user_to_add} for connection with {agent}: {check_2}.\n")
                             feedback = f"Reasoning: {response_2.reasoning}\nFEEDBACK: {check_2.splitlines()[1:]}"
                         elif 'VALID' in check_2.splitlines()[0]:
-                            print(f"VALID.\n")
+                            print(f"VALID. {user_to_add} for connection from {agent}\n")
                             matched_agents_copy[(user_to_add, agent)] = response_2.answer
                             break
                         else:

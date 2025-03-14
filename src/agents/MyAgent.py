@@ -20,8 +20,7 @@ class MyAgent(RoutedAgent):
         print(f"You just created an Agent: '{self.id}'")
 
         self._system_message = SystemMessage(
-            content=f"""
-            You are a Personal Policy Enforcement Agent for the user: {self.id}.
+            content=f"""You are a Personal Policy Enforcement Agent for the user: {self.id}.
             Your goal is to connect your user with other agents based on their public information and your user policies.
             You should respect the user privacy and not share information the user explicitly wants to be kept private.
             You are only allowed to connect with other agents if they adhere to your user policies or the default policies.
@@ -126,6 +125,7 @@ class MyAgent(RoutedAgent):
                      These are {message.requester}'s public information: {message.requester_information}.\n
                      Respond with ONLY "ACCEPT" or "REJECT" in the first line of your response.
                      Provide a reasoning for each policy if it was satisfied or not.
+                     Only respond based on the provided policies and information. Do not make broader considerations.
                     """
 
         if message.feedback != "":

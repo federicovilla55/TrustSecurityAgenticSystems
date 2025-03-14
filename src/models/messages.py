@@ -30,7 +30,7 @@ class PairingRequest:
     """
     requester: str
     requester_information: str
-    feedback: str = None
+    feedback: str = ""
 
 @dataclass
 class PairingResponse:

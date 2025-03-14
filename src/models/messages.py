@@ -19,16 +19,18 @@ class ConfigurationMessage:
     """
     user: str
     user_information: str
-    user_preferences: str
+    user_policies: str
     # maybe last two elements should be lists or dictionaries?
 
 @dataclass
 class PairingRequest:
     """
-    Message sent by the orchestrator to an agent containing a pairing request for that agent from another agent
+    Message sent by the orchestrator to an agent containing a pairing request for an agent
+    from another requester agent
     """
-    user: str
-    user_information: str
+    requester: str
+    requester_information: str
+    feedback: str = None
 
 @dataclass
 class PairingResponse:
@@ -37,6 +39,8 @@ class PairingResponse:
     for a pairing request
     """
     answer: Relation
+    reasoning: str
+
 
 @dataclass
 class GetRequest:
@@ -51,6 +55,6 @@ class MatchedAgents:
     Answer to the orchestrator get request
     """
     request_type: RequestType
-    agents_relation: Optional[AgentRelations] = None
-    registered_agents: Optional[Set[str]] = None
+    agents_relation: AgentRelations = None
+    registered_agents: Set[str] = None
     # more types should be added when the orchestrator will contain more information

@@ -14,4 +14,5 @@ class RequestType(Enum):
 class ModelType(Enum):
     OLLAMA = 1
     OPENAI = 2
-    MISTRAL = 3
+    GEMINI = 3
+    MISTRAL = 4

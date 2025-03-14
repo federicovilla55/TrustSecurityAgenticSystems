@@ -1,1 +1,1 @@
-from .helpers import extract_section, remove_chain_of_thought
+from .helpers import extract_section, remove_chain_of_thought, separate_categories

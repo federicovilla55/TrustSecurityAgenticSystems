@@ -4,9 +4,9 @@ import pytest
 from src import (
     MyAgent, OrchestratorAgent, RequestType, Relation, AgentId,
     GetRequest, SetupMessage, SingleThreadedAgentRuntime, ModelType,
+    register_agents, get_model,
+    Client, Runtime
 )
-
-from src.main import (get_model, start_runtime, create_user, register_agents)
 
 """
 This test only verifies the correct implementation and creation of agents and tries
@@ -14,23 +14,32 @@ to connect them without considering which connection are approved or refused.
 """
 @pytest.mark.asyncio
 async def test_agent_implementation():
-    runtime = await start_runtime()
-    model_client = get_model(ModelType.OLLAMA)
-    await register_agents(runtime, model_client)
+    await Runtime.start_runtime()
+
+    model_client = get_model(model_type=ModelType.OLLAMA, model="phi4:latest")
+
+    await register_agents(model_client)
 
     print("Test Runtime Started.")
 
-    # Some random user for
-    await create_user("Alice", "I am Alice, an ETH student. I study computer science and I want to connect to other students from ETH or workers from Big tech companies.", runtime)
-    await create_user("Bob", "I am Bob, an ETH student. I study cyber security and I want to connect to other students with similar interests or that study in my same university.", runtime)
-    await create_user("Charlie", "I am Charlie, a researcher at Microsoft in Zurich. I enjoy running, competitive programming and studying artificial intelligence. I want to connect to people with my same interests or from my same organization", runtime)
-    await create_user("David", "I am David, a UZH Finance student. I really like studying finance, especially personal finance. I like hiking and running. I want to connect to other people from Zurich or with similar interests.", runtime)
+    alice = Client("Alice")
+    bob = Client("Bob")
+    charlie = Client("Charlie")
+    david = Client("David")
 
-    await runtime.stop_when_idle()
-    runtime.start()
-    relations = await runtime.send_message(GetRequest(request_type=RequestType.GET_AGENT_RELATIONS.value), AgentId("orchestrator_agent", "default"))
-    registered_agents = await runtime.send_message(GetRequest(request_type=RequestType.GET_REGISTERED_AGENTS.value), AgentId("orchestrator_agent", "default"))
-    await runtime.stop_when_idle()
+    # Some random user for
+    await alice.setup_user("I am Alice, an ETH student. I study computer science and I want to connect to other students from ETH or workers from Big tech companies.")
+    await bob.setup_user("I am Bob, an ETH student. I study cyber security and I want to connect to other students with similar interests or that study in my same university.")
+    await charlie.setup_user("I am Charlie, a researcher at Microsoft in Zurich. I enjoy running, competitive programming and studying artificial intelligence. I want to connect to people with my same interests or from my same organization")
+    await david.setup_user("I am David, a UZH Finance student. I really like studying finance, especially personal finance. I like hiking and running. I want to connect to other people from Zurich or with similar interests.")
+
+    await Runtime.stop_runtime()
+    await Runtime.start_runtime()
+
+    relations = await Runtime.send_message(GetRequest(request_type=RequestType.GET_AGENT_RELATIONS.value), agent_type="orchestrator_agent")
+    registered_agents = await Runtime.send_message(GetRequest(request_type=RequestType.GET_REGISTERED_AGENTS.value), agent_type="orchestrator_agent")
+    await Runtime.stop_runtime()
+    await Runtime.close_runtime()
 
     print("Test Runtime Finished.")
 

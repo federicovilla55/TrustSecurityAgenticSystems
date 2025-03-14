@@ -1,15 +1,21 @@
 import asyncio
-
-from typing_extensions import runtime
+import os
 
 from src import *
+from src.client import Client
 
-def get_model(model_type : ModelType) -> ChatCompletionClient:
+def get_model(model_type : ModelType, model : Optional[str] = None) -> ChatCompletionClient:
     if model_type == ModelType.OLLAMA:
+        # Specify if there is a special url that, otherwise use the standard one.
+        if os.getenv('BASE_URL'):
+            base_url = os.getenv('BASE_URL')
+        else:
+            print("No BASE_URL environment variable found. Using default.")
+            base_url = "http://localhost:11434/v1"
+
         model_client = OpenAIChatCompletionClient(
-            model="llama3.2:3b",
-            # base_url="http://localhost:11434/v1",
-            base_url="http://192.168.1.20:11434/v1",
+            model= model if model else "llama3.2:3b",
+            base_url=base_url,
             api_key="placeholder",
             model_info={
                 "vision": False,
@@ -19,7 +25,18 @@ def get_model(model_type : ModelType) -> ChatCompletionClient:
             },
         )
     elif model_type == ModelType.OPENAI:
-        model_client = OpenAIChatCompletionClient(model="gpt-4o", )
+        if not os.getenv("OPENAI_API_KEY"):
+            print("Please set OPENAI_API_KEY environment variable.")
+            exit()
+        model_client = OpenAIChatCompletionClient(model=(model if model else "gpt-4o"), api_key=os.getenv("OPENAI_API_KEY"))
+    elif model_type == ModelType.GEMINI:
+        if not os.getenv("GEMINI_API_KEY"):
+            print("Please set GEMINI_API_KEY environment variable.")
+            exit()
+        model_client = OpenAIChatCompletionClient(
+            model=model if model else "gemini-1.5-flash",
+            api_key=os.getenv("GEMINI_API_KEY"),
+        )
     else:
         model_client = None
         print("No model selected.")
@@ -27,44 +44,39 @@ def get_model(model_type : ModelType) -> ChatCompletionClient:
 
     return model_client
 
-async def register_agents(
-        runtime : SingleThreadedAgentRuntime,
-        model_client : ChatCompletionClient,
-        my_agent_type: str = "my_agent",
-        orchestrator_agent_type: str = "orchestrator_agent",
-        orchestrator_agent_description: str = "Orchestrator",):
-    await MyAgent.register(runtime, my_agent_type, lambda: MyAgent(model_client=model_client))
-    await OrchestratorAgent.register(runtime, orchestrator_agent_type, lambda: OrchestratorAgent(description=orchestrator_agent_description, model_client=model_client))
-
-async def create_user(user: str, user_content: str, runtime : SingleThreadedAgentRuntime) -> None:
-    await runtime.send_message(SetupMessage(content=user_content, user=user), AgentId("my_agent", user))
-
-async def start_runtime() -> runtime:
-    runtime = SingleThreadedAgentRuntime()
-
-    runtime.start()
-
-    return runtime
+async def register_agents(model_client : ChatCompletionClient):
+    await Runtime.register_my_agent(model_client=model_client)
+    await Runtime.register_orchestrator(model_client=model_client)
 
 async def run():
-    runtime = await start_runtime()
+    await Runtime.start_runtime()
 
-    model_client = get_model(ModelType.OLLAMA)
+    model_client = get_model(model_type=ModelType.OLLAMA, model="phi4:latest")
 
-    await register_agents(runtime, model_client)
+    await register_agents(model_client)
 
-    await create_user("Alice", "I am Alice, an ETH student. I study computer science and I want to connect to other students from ETH or workers from Big tech companies.", runtime)
-    await create_user("Bob", "I am Bob, an ETH student. I study cyber security and I want to connect to other students with similar interests or that study in my same university.", runtime)
-    await create_user("Charlie", "I am Charlie, a software engineer at Apple in Zurich. I previously studied at Politecnico di Milano and I enjoy running, competitive programming and studying artificial intelligence. I want to connect to people with my same interests or from my same organization", runtime)
-    await create_user("David", "I am David, a UZH Finance student. I really like studying finance, especially personal finance. I like hiking and running. I want to connect to other people from Zurich or with similar interests.", runtime)
+    print("Test Runtime Started.")
 
-    #await asyncio.sleep(5)
-    await runtime.stop_when_idle()
-    runtime.start()
-    relations = await runtime.send_message(GetRequest(request_type=RequestType.GET_AGENT_RELATIONS.value), AgentId("orchestrator_agent", "default"))
-    registered_agents = await runtime.send_message(GetRequest(request_type=RequestType.GET_REGISTERED_AGENTS.value), AgentId("orchestrator_agent", "default"))
-    await runtime.stop_when_idle()
-    print(f"{'~'*20}\nRelations: {relations.agents_relation}\nRegistered: {registered_agents.registered_agents}\n{'~'*20}\n")
+    alice = Client("Alice")
+    bob = Client("Bob")
+    charlie = Client("Charlie")
+    david = Client("David")
+
+    # Some random user for
+    await alice.setup_user("I am Alice, an ETH student. I study computer science and I want to connect to other students from ETH or workers from Big tech companies.")
+    await bob.setup_user("I am Bob, an ETH student. I study cyber security and I want to connect to other students with similar interests or that study in my same university.")
+    await charlie.setup_user("I am Charlie, a researcher at Microsoft in Zurich. I enjoy running, competitive programming and studying artificial intelligence. I want to connect to people with my same interests or from my same organization")
+    await david.setup_user("I am David, a UZH Finance student. I really like studying finance, especially personal finance. I like hiking and running. I want to connect to other people from Zurich or with similar interests.")
+
+    await Runtime.stop_runtime()
+    await Runtime.start_runtime()
+
+    relations = await Runtime.send_message(GetRequest(request_type=RequestType.GET_AGENT_RELATIONS.value), agent_type="orchestrator_agent")
+    registered_agents = await Runtime.send_message(GetRequest(request_type=RequestType.GET_REGISTERED_AGENTS.value), agent_type="orchestrator_agent")
+    await Runtime.stop_runtime()
+    await Runtime.close_runtime()
+
+    print(f"{'~'*20}\nRelations: {relations}\nRegistered: {registered_agents}\n{'~'*20}\n")
 
 if __name__ == "__main__":
     asyncio.run(run())

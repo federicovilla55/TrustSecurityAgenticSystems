@@ -10,6 +10,6 @@ from .utils import (
 
 from .runtime import Runtime
 
-from .main import register_agents, get_model
+from .main import register_agents, get_model, register_my_agent, register_orchestrator
 
 from .client import Client

@@ -5,7 +5,7 @@ from src import (
     MyAgent, OrchestratorAgent, RequestType, Relation, AgentId,
     GetRequest, SetupMessage, SingleThreadedAgentRuntime, ModelType,
     register_agents, get_model,
-    Client, Runtime
+    Client, Runtime, register_my_agent, register_orchestrator
 )
 
 """
@@ -16,9 +16,12 @@ to connect them without considering which connection are approved or refused.
 async def test_agent_implementation():
     await Runtime.start_runtime()
 
-    model_client = get_model(model_type=ModelType.OLLAMA, model="phi4:latest")
+    model_name = "llama3.2:3b"
+    model_client_my_agent = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.7)
+    model_client_orchestrator = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.5)
 
-    await register_agents(model_client)
+    await register_my_agent(model_client_my_agent)
+    await register_orchestrator(model_client_orchestrator)
 
     print("Test Runtime Started.")
 
@@ -38,15 +41,20 @@ async def test_agent_implementation():
 
     relations = await Runtime.send_message(GetRequest(request_type=RequestType.GET_AGENT_RELATIONS.value), agent_type="orchestrator_agent")
     registered_agents = await Runtime.send_message(GetRequest(request_type=RequestType.GET_REGISTERED_AGENTS.value), agent_type="orchestrator_agent")
+
     await Runtime.stop_runtime()
-    await Runtime.close_runtime()
+    #await Runtime.close_runtime()
 
     print("Test Runtime Finished.")
 
+    #exit()
+
+    # Check all agents have been registered
+    print(registered_agents)
     assert len(registered_agents.registered_agents) == 4
 
+    # Check all agents have been in contact with each other
     assert len(relations.agents_relation) == 12
-
     for rel in relations.agents_relation.values():
         assert (rel == Relation.ACCEPTED) or (rel == Relation.REFUSED)
 
@@ -77,5 +85,9 @@ async def test_agent_implementation():
             if a == agent and r == Relation.ACCEPTED:
                 connections.append(b)
         print(f"- {agent} : {', '.join(connections)}")
+
+
+        
+    
 
 

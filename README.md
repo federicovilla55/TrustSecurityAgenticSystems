@@ -46,6 +46,12 @@ TrustSecurityAgenticSystems/
 │   │   ├── __init__.py
 │   │   ├── MyAgent.py
 │   │   ├── OrchestratorAgent.py
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── messages.py
+│   ├── runtime/
+│   │   ├── __init__.py
+│   │   ├── runtime.py
 │   ├── enums/
 │   │   ├── __init__.py
 │   │   ├── enums.py
@@ -54,6 +60,7 @@ TrustSecurityAgenticSystems/
 │   │   ├── __init__.py
 │   │   ├── helpers.py
 │   ├── main.py
+│   ├── client.py
 ├── tests/
 │   ├── __init__.py
 │   ├── test_agent_implementation.py

@@ -36,3 +36,9 @@ class Client:
     async def send_feedback(self, relation_id : str, feedback : bool):
         # give feedback in one of the multiple types of agent relation
         print()
+
+    async def save_configuration(self):
+        ...
+
+    async def load_configuration(self):
+        ...

@@ -1,6 +1,8 @@
 import asyncio
+import json
 from typing import Dict, List, Optional, Tuple, Set, Any, Coroutine
 from autogen_core import AgentId, MessageContext, RoutedAgent, SingleThreadedAgentRuntime, message_handler, type_subscription, TopicId, DefaultTopicId
+from autogen_core.model_context import BufferedChatCompletionContext
 from autogen_core.models import ChatCompletionClient, SystemMessage, UserMessage
 
 from .. import PairingResponse
@@ -17,9 +19,9 @@ class OrchestratorAgent(RoutedAgent):
 
         self._model_client = model_client
         self._registered_agents: Set[str] = set()
-        self._agent_information: Dict[str, str_pair] = {}
+        self._agent_information: Dict[str, json_pair] = {}
         self._matched_agents: AgentRelations = {}
-
+        self._model_context_dict : Dict[str_pair, BufferedChatCompletionContext] = {}
         self._agents_lock = asyncio.Lock()
 
     async def get_registered_agents(self) -> set[str]:
@@ -35,7 +37,7 @@ class OrchestratorAgent(RoutedAgent):
                 You are the Policy Enforcement Orchestrator. 
                 Your job is to evaluate the reasoning {receiver} made.
                 - Your evaluation should not be too strictly.
-                - Your evalutation should not move away from the provided information.
+                - Your evaluation should not move away from the provided information.
                 - INVALID only if there are severe policy violations. 
                 - Policies and information cannot be further explained, corrected or modified.
                 - Respond in the first line of your response with ONLY "VALID" if {receiver}'s reasoning is correct, with "INVALID" if some policy evaluation is wrong. 
@@ -49,75 +51,77 @@ class OrchestratorAgent(RoutedAgent):
                 """
 
         llm_answer = await self._model_client.create(
-            messages=[UserMessage(content=prompt, source="OrchestratorAgent"),],
+            messages=[UserMessage(content=prompt, source="OrchestratorAgent")] + await self._model_context_dict[(sender, receiver)].get_messages(),
         )
+
+        await self._model_context_dict[(sender, receiver)].add_message(llm_answer)
 
         return llm_answer.content
 
+    async def pair_agent_with_feedback(self, sender : str, receiver : str) -> None:
+        # The sender sends its public information while the receiver checks this information using its policies and private information
+        feedback = ""
+
+        async with self._agents_lock:
+            sender_information = self._agent_information[sender]
+            receiver_information = self._agent_information[receiver]
+
+        receiver_policies = json.dumps(receiver_information[1], indent=4, sort_keys=True)
+        sender_public_information = json.dumps(sender_information[0], indent=4, sort_keys=True)
+
+        pair_response: PairingResponse = PairingResponse(Relation.UNCONTACTED, "")
+
+        for i in range(5):
+            self._model_context_dict[(sender, receiver)] = BufferedChatCompletionContext(buffer_size=5)
+            pair_response: PairingResponse = await self.send_message(
+                PairingRequest(
+                    requester=sender, requester_information=sender_public_information,
+                    feedback=feedback
+                ),
+                AgentId("my_agent", receiver)
+            )
+            await self._model_context_dict[(sender, receiver)].add_message(pair_response)
+            check_pairing = await self.check_response(
+                sender, receiver, sender_public_information,
+                receiver_policies, pair_response.reasoning
+            )
+            if 'INVALID' in check_pairing.splitlines()[0]:
+                feedback = f"Previous agent Reasoning: {pair_response.reasoning}\nFEEDBACK: {check_pairing.splitlines()[1:]}"
+            elif 'VALID' in check_pairing.splitlines()[0]:
+                async with self._agents_lock:
+                    self._matched_agents[(sender, receiver)] = pair_response.answer
+                return
+            else:
+                print(f"ERROR: Unknown answer when handling pairing request to {receiver} from {sender}...")
+                break
+
+        print("Exceeded Runtime.")
+
+        async with self._agents_lock:
+            self._matched_agents[(sender, receiver)] = pair_response.answer
 
     async def match_agents(self, user_to_add: str) -> None:
-        print(f"Matching agents with {user_to_add}...")
-
         registered_agents_copy = await self.get_registered_agents()
+        registered_agents_copy.remove(user_to_add)
+        print("STARTED MATCHING.")
+
         matched_agents_copy = await self.get_matched_agents()
-        async with self._agents_lock:
-            agent_information_copy = self._agent_information.copy()
 
-        for agent in registered_agents_copy:
-            if agent != user_to_add:
-                if matched_agents_copy.get((agent, user_to_add)) == Relation.UNCONTACTED and matched_agents_copy.get(
-                        (user_to_add, agent)) == Relation.UNCONTACTED:
-                    print(f"Contacting: {agent}...")
+        for registered_agent in registered_agents_copy:
+            # Does the already registered agents accept the pair with the new agent?
+            if matched_agents_copy.get((user_to_add, registered_agent)) == Relation.UNCONTACTED:
+                await self.pair_agent_with_feedback(user_to_add, registered_agent)
 
-                    feedback = ""
-                    while True:
-                        response_1 : PairingResponse = await self.send_message(
-                            PairingRequest(requester=user_to_add,
-                                           requester_information=agent_information_copy[user_to_add][0], feedback=feedback),
-                            AgentId("my_agent", agent)
-                        )
-                        check_1 = await self.check_response(user_to_add, agent, agent_information_copy[user_to_add][0], agent_information_copy[agent][1], response_1.reasoning)
-                        if 'INVALID' in check_1.splitlines()[0]:
-                            print(f"INVALID. Now I should give a feedback to {agent} for connection with {user_to_add}: {check_1}.\n")
-                            feedback = f"Reasoning: {response_1.reasoning}\nFEEDBACK: {check_1.splitlines()[1:]}"
-                        elif 'VALID' in check_1.splitlines()[0]:
-                            print(f"VALID. {agent} for connection from {user_to_add}\n")
-                            matched_agents_copy[(agent, user_to_add)] = response_1.answer
-                            break
-                        else:
-                            print(f"ERROR: Unknown answer when handling pairing request to {agent} from {user_to_add}...")
-                            break
-                    feedback = ""
-                    while True:
-                        response_2 : PairingResponse = await self.send_message(
-                            PairingRequest(requester=agent,
-                                           requester_information=agent_information_copy[agent][0], feedback=feedback),
-                            AgentId("my_agent", user_to_add)
-                        )
-                        check_2 = await self.check_response(agent, user_to_add, agent_information_copy[agent][0], agent_information_copy[user_to_add][1], response_2.reasoning)
-                        if 'INVALID' in check_2.splitlines()[0]:
-                            print(f"INVALID. Now I should give a feedback to {user_to_add} for connection with {agent}: {check_2}.\n")
-                            feedback = f"Reasoning: {response_2.reasoning}\nFEEDBACK: {check_2.splitlines()[1:]}"
-                        elif 'VALID' in check_2.splitlines()[0]:
-                            print(f"VALID. {user_to_add} for connection from {agent}\n")
-                            matched_agents_copy[(user_to_add, agent)] = response_2.answer
-                            break
-                        else:
-                            print(f"ERROR: Unknown answer when handling pairing request to {user_to_add} from {agent}...")
-                            break
+            # Does the new agent accept the pair with the already registered agent?
+            if matched_agents_copy.get((registered_agent, user_to_add)) == Relation.UNCONTACTED:
+                await self.pair_agent_with_feedback(registered_agent, user_to_add)
 
-
-        async with self._agents_lock:
-            for agent in registered_agents_copy:
-                if agent != user_to_add:
-                    print(f"UPDATING: agent: {agent} - {user_to_add}...")
-                    self._matched_agents[(agent, user_to_add)] = matched_agents_copy[(agent, user_to_add)]
-                    self._matched_agents[(user_to_add, agent)] = matched_agents_copy[(user_to_add, agent)]
-
+        print("ENDED MATCHING.")
 
     @message_handler
     async def agent_configuration(self, message: ConfigurationMessage, context: MessageContext) -> None:
         registered_agents_copy = await self.get_registered_agents()
+
         if message.user in registered_agents_copy or message.user == self.id or message.user != context.sender:
             async with self._agents_lock:
                 for agent in registered_agents_copy:

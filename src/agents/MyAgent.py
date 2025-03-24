@@ -1,15 +1,17 @@
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Set, Any, Coroutine
 from autogen_core import AgentId, MessageContext, RoutedAgent, SingleThreadedAgentRuntime, message_handler, type_subscription, TopicId, DefaultTopicId
+from autogen_core.model_context import BufferedChatCompletionContext
 from autogen_core.models import ChatCompletionClient, SystemMessage, UserMessage
 from autogen_ext.models.openai import OpenAIChatCompletionClient
+import asyncio
 
 from ..enums import *
 from ..models import (
     SetupMessage, ConfigurationMessage, PairingRequest,
     PairingResponse, GetRequest, MatchedAgents
 )
-from ..utils import extract_section, remove_chain_of_thought, separate_categories
+from ..utils import extract_section, remove_chain_of_thought, separate_categories, extract_json
 
 class MyAgent(RoutedAgent):
     def __init__(self, description : str, model_client: ChatCompletionClient):
@@ -17,7 +19,7 @@ class MyAgent(RoutedAgent):
         self._private_information = None
         self._policies = None
         self._public_information = None
-        print(f"You just created an Agent: '{self.id}'")
+        self._model_context = BufferedChatCompletionContext(buffer_size=5)
 
         self._system_message = SystemMessage(
             content=f"""You are a Personal Policy Enforcement Agent for the user: {self.id}.
@@ -39,8 +41,8 @@ class MyAgent(RoutedAgent):
             cancellation_token=context.cancellation_token,
         )
 
-        print(f"{'*' * 20}\nPROMPT REQUEST: {[self._system_message, UserMessage(content=prompt, source=self._user), UserMessage(content=user_information_prompt, source=self._user)]}\n{'*' * 20}\n")
-        print(f"{'-' * 20}\n{self.id} ANSWER: {llm_answer.content}\n{'-' * 20}\n")
+        #print(f"{'*' * 20}\nPROMPT REQUEST: {[self._system_message, UserMessage(content=prompt, source=self._user), UserMessage(content=user_information_prompt, source=self._user)]}\n{'*' * 20}\n")
+        #print(f"{'-' * 20}\n{self.id} ANSWER: {llm_answer.content}\n{'-' * 20}\n")
 
         result = remove_chain_of_thought(llm_answer.content)
 
@@ -59,7 +61,6 @@ class MyAgent(RoutedAgent):
 
         prompt_information = f"""
                     Extract ALL user policies from {self.id} message, following these rules:
-                    - Answer with a list of policies provided by the user.
                     - Identify both explicit and implicit policies.
                     - Capture all content provided by the user.
                     - Separate rules with multiple conditions into individual items.
@@ -67,38 +68,86 @@ class MyAgent(RoutedAgent):
                     - Respect user privacy and do not share information the user explicitly wants to be kept private.
                     - Rules may exclude each other. Understand the rules logic and divide or aggregate them.
                     - Add precise context to each rule to reduce uncertainty.
+                    - Exclude policies the user explicitly wanted to be kept private.
                     EXTRACT ALL public personal information from {self.id} message, following these rules:
                     - Include Organizations, Jobs and Interests explicitly mentioned.
                     - Capture all content provided by the user.
                     - Exclude information the user explicitly wanted to be kept private.
-                    - Answer with a list of information provided by the user.
                     - Add precise context to each information to reduce uncertainty.
                     EXTRACT ALL private information from {self.id} message, following these rules:
-                    - Include all information the user explicitly wanted to be kept private. 
+                    - Include all information and policies the user explicitly wanted to be kept private. 
                     - Exclude public personal information.
                     - Answer with a list of information provided by the user.
                     - Add precise context to each information to reduce uncertainty.
                     
                     When answering, categorize your response into three sections using the following format:
                     **Public Information**:
-                    - [List {self.id} public information]
+                    - [{self.id} public information]
                     **Private Information**:
-                    - [List {self.id} private information]
+                    [- {self.id} private information]
                     **Policies**:
-                    - [List {self.id} policies]
+                    [- {self.id} policies]
                     Separate each section with "---" and avoid mixing categories.
 
                     This is {self.id} message: {message.content}.
                     """
+
+        # TODO: add this
+        # await self._model_context.add_message(message)
 
         llm_answer = await self._model_client.create(
             messages=[self._system_message, UserMessage(content=prompt_information, source=self._user)],
             cancellation_token=context.cancellation_token,
         )
 
-        result = remove_chain_of_thought(llm_answer.content)
-        print(f"RAW: {result}.")
-        self._policies, self._public_information, self._private_information = separate_categories(result)
+        await self._model_context.add_message(UserMessage(content=llm_answer.content, source=self._user))
+
+        prompt = f"""Use the previous messages to generate a JSON formatted list of public policies provided by the user.
+                    Those rules must have a "rule_ID" field and a "content" field.
+                    [{{"rule_ID": "...", "content": "..."}}, ...]"""
+
+        while self._policies is None:
+            llm_answer = await self._model_client.create(
+                messages = [UserMessage(content=prompt, source=self._user)] + await self._model_context.get_messages(),
+                cancellation_token=context.cancellation_token,
+            )
+
+            self._policies = extract_json(llm_answer.content)
+
+        prompt = f"""Use the previous messages to generate a JSON well-formatted list of public information provided by the user.
+                            Those information must have a "info_ID" field and a "content" field.
+                            [{{"info_ID": "...", "content": "..."}}, ...]"""
+
+        while self._public_information is None:
+            llm_answer = await self._model_client.create(
+                messages = [UserMessage(content=prompt, source=self._user)] + await self._model_context.get_messages(),
+                cancellation_token=context.cancellation_token,
+            )
+
+            self._public_information = extract_json(llm_answer.content)
+
+        # TODO: generate matching agent profiles.
+        """
+        prompt = f"Generate a JSON well-formatted list of agents profiles that match the policies requirements for matching with the agent.
+                    You should create a JSON well-formatted list of agents profiles that contains a 
+                    - "type_ID" field, with an unique identifier.
+                    - "content" field, with a precise and complete description of the information an agent should have in order to be matched. 
+                    - "rules" field, a list that contains the policy identifiers, "rule_ID", of the policies that used to generate this agent profile.
+                    Generate one profile per wanted characteristic and combine policies if they do not overlap.
+                    
+                    Format as: [{{"type_ID": "...", "content": "...", "rules": [...]}}, ...]
+                    "
+
+        llm_answer = await self._model_client.create(
+            messages=[UserMessage(content=prompt, source=self._user)] + await self._model_context.get_messages(),
+            cancellation_token=context.cancellation_token,
+        )
+
+        print("LLM ANSWER: ", llm_answer.content)
+        self._profiles = extract_json(llm_answer.content)
+
+        print(f"Profiles: {self._profiles}")
+        """
 
         print(f"{'='*20}\n{self._user} POLICIES: {self._policies}")
         print(f"{self._user} PUBLIC INFORMATION: {self._public_information}\n")
@@ -124,8 +173,12 @@ class MyAgent(RoutedAgent):
                      Find if there is compatibility between the {message.requester}'s information and {self.id}'s policies and information.
                      These are {message.requester}'s public information: {message.requester_information}.\n
                      Respond with ONLY "ACCEPT" or "REJECT" in the first line of your response.
-                     Provide a reasoning for each policy if it was satisfied or not.
+                     Provide a reasoning consist in either 'POSITIVE' or 'NEGATIVE' or 'PRIVATE' or 'UNUSED' for each rule_ID.
                      Only respond based on the provided policies and information. Do not make broader considerations.
+                     - 'POSITIVE' means that the rule_ID lead to accepting the connection.
+                     - 'NEGATIVE' means that the rule_ID lead to rejecting the connection.
+                     - 'PRIVATE' means that the rule_ID lead to a decision using private information.
+                     - 'UNUSED' means that the rule_ID was not used to deciding the connection.
                     """
 
         if message.feedback != "":

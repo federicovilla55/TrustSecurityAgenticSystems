@@ -18,9 +18,8 @@ class ConfigurationMessage:
     Message sent by an agent to the orchestration to forward the processed information the user first sent
     """
     user: str
-    user_information: str
-    user_policies: str
-    # maybe last two elements should be lists or dictionaries?
+    user_information: dict
+    user_policies: dict
 
 @dataclass
 class PairingRequest:

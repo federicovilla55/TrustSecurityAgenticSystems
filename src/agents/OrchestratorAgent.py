@@ -34,14 +34,14 @@ class OrchestratorAgent(RoutedAgent):
 
     async def check_response(self, sender : str, receiver : str, sender_information : str, receiver_policies : str, reasoning : str) -> str:
         prompt = f"""
-                You are the Policy Enforcement Orchestrator. 
-                Your job is to evaluate the reasoning {receiver} made.
-                - Your evaluation should not be too strictly.
+                You are the Policy Enforcement Orchestrator. Your job is to evaluate the reasoning {receiver} made on the policies.
+                The received reasoning includes a series of policies ID and a status regarding whether the policy was UNUSED, used with private information or
+                if it was used to decide whether the connection should be accepted ('POSITIVE') or rejected ('NEGATIVE'). 
+                You have to analyze the policies that lead to accepting or rejecting the connection and for each policy determine if it was applied correctly. 
                 - Your evaluation should not move away from the provided information.
-                - INVALID only if there are severe policy violations. 
                 - Policies and information cannot be further explained, corrected or modified.
-                - Respond in the first line of your response with ONLY "VALID" if {receiver}'s reasoning is correct, with "INVALID" if some policy evaluation is wrong. 
-                - Provide a feedback in case the reasoning is invalid.
+                - Respond in the first line of your response with ONLY "VALID" if {receiver}'s reasoning is correct, with "INVALID" if some policy evaluation are wrong. 
+                - Provide a feedback in case the reasoning is invalid with a list of policies that should be considered differently and why.
                 
                 These are {sender}'s public information: {sender_information}.
                 
@@ -51,10 +51,10 @@ class OrchestratorAgent(RoutedAgent):
                 """
 
         llm_answer = await self._model_client.create(
-            messages=[UserMessage(content=prompt, source="OrchestratorAgent")] + await self._model_context_dict[(sender, receiver)].get_messages(),
+            messages=[UserMessage(content=prompt, source="OrchestratorAgent")] + (await self._model_context_dict[(sender, receiver)].get_messages()),
         )
 
-        await self._model_context_dict[(sender, receiver)].add_message(llm_answer)
+        await self._model_context_dict[(sender, receiver)].add_message(UserMessage(content=llm_answer.content, source="OrchestratorAgent"))
 
         return llm_answer.content
 
@@ -80,7 +80,7 @@ class OrchestratorAgent(RoutedAgent):
                 ),
                 AgentId("my_agent", receiver)
             )
-            await self._model_context_dict[(sender, receiver)].add_message(pair_response)
+            await self._model_context_dict[(sender, receiver)].add_message(UserMessage(content=pair_response.reasoning, source=sender))
             check_pairing = await self.check_response(
                 sender, receiver, sender_public_information,
                 receiver_policies, pair_response.reasoning
@@ -95,15 +95,12 @@ class OrchestratorAgent(RoutedAgent):
                 print(f"ERROR: Unknown answer when handling pairing request to {receiver} from {sender}...")
                 break
 
-        print("Exceeded Runtime.")
-
         async with self._agents_lock:
             self._matched_agents[(sender, receiver)] = pair_response.answer
 
     async def match_agents(self, user_to_add: str) -> None:
         registered_agents_copy = await self.get_registered_agents()
         registered_agents_copy.remove(user_to_add)
-        print("STARTED MATCHING.")
 
         matched_agents_copy = await self.get_matched_agents()
 
@@ -116,21 +113,19 @@ class OrchestratorAgent(RoutedAgent):
             if matched_agents_copy.get((registered_agent, user_to_add)) == Relation.UNCONTACTED:
                 await self.pair_agent_with_feedback(registered_agent, user_to_add)
 
-        print("ENDED MATCHING.")
-
     @message_handler
     async def agent_configuration(self, message: ConfigurationMessage, context: MessageContext) -> None:
-        registered_agents_copy = await self.get_registered_agents()
+        async with self._agents_lock:
+            registered = message.user in self._registered_agents
 
-        if message.user in registered_agents_copy or message.user == self.id or message.user != context.sender:
-            async with self._agents_lock:
-                for agent in registered_agents_copy:
-                    if self._matched_agents.get((agent, message.user)) is None:
-                        self._matched_agents[(agent, message.user)] = Relation.UNCONTACTED
-                        self._matched_agents[(message.user, agent)] = Relation.UNCONTACTED
+        if not registered and message.user == context.sender.key:
+            for agent in self._registered_agents:
+                if self._matched_agents.get((agent, message.user)) is None:
+                    self._matched_agents[(agent, message.user)] = Relation.UNCONTACTED
+                    self._matched_agents[(message.user, agent)] = Relation.UNCONTACTED
 
-                self._registered_agents.add(message.user)
-                self._agent_information[message.user] = (message.user_information, message.user_policies)
+            self._registered_agents.add(message.user)
+            self._agent_information[message.user] = (message.user_information, message.user_policies)
 
             # in a more complex application maybe this could be scheduled as a background task: `asyncio.create_task`
             await self.match_agents(message.user)

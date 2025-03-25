@@ -20,7 +20,7 @@ class MyAgent(RoutedAgent):
         self._policies = None
         self._public_information = None
         self._model_context = BufferedChatCompletionContext(buffer_size=5)
-
+        self._model_context_dict : Dict[str, BufferedChatCompletionContext] = {}
         self._system_message = SystemMessage(
             content=f"""You are a Personal Policy Enforcement Agent for the user: {self.id}.
             Your goal is to connect your user with other agents based on their public information and your user policies.
@@ -29,20 +29,20 @@ class MyAgent(RoutedAgent):
             You are not allowed to connect with other agents if they violate your user policies.
             """
         )
-
         self._model_client = model_client
         self.paired_agents : Set[str] = set()
         self.refused_agents : Set[str] = set()
 
-    async def evaluate_connection(self, context, prompt, user_information_prompt) -> PairingResponse:
+    async def evaluate_connection(self, context, prompt, requester : str) -> PairingResponse:
         llm_answer = await self._model_client.create(
-            messages=[self._system_message, UserMessage(content=prompt, source=self._user),
-                      UserMessage(content=user_information_prompt, source=self._user), ],
+            messages=[self._system_message, UserMessage(content=prompt, source=self._user),] +
+                      await self._model_context.get_messages() +
+                      await self._model_context_dict[requester].get_messages(),
             cancellation_token=context.cancellation_token,
         )
 
-        #print(f"{'*' * 20}\nPROMPT REQUEST: {[self._system_message, UserMessage(content=prompt, source=self._user), UserMessage(content=user_information_prompt, source=self._user)]}\n{'*' * 20}\n")
-        #print(f"{'-' * 20}\n{self.id} ANSWER: {llm_answer.content}\n{'-' * 20}\n")
+        print(f"{'*' * 20}\nPROMPT REQUEST: {[self._system_message, UserMessage(content=prompt, source=self._user),]}\n{'*' * 20}\n")
+        print(f"{'-' * 20}\n{self.id} ANSWER: {llm_answer.content}\n{'-' * 20}\n")
 
         result = remove_chain_of_thought(llm_answer.content)
 
@@ -166,6 +166,9 @@ class MyAgent(RoutedAgent):
     @message_handler
     async def handle_pairing_request(self, message: PairingRequest, context: MessageContext) -> PairingResponse:
         #print(f"'{self.id}' Received pairing request from '{message.user}'")
+        if message.requester not in self._model_context_dict.keys():
+            self._model_context_dict[message.requester] = BufferedChatCompletionContext(buffer_size=6)
+
         prompt = f"""Evaluate the connection request from {message.requester} to {self.id} and accept or reject it.
                      You can accept a connection if the {message.requester}'s information adhere to the:
                      - {self.id} defined policies;
@@ -175,16 +178,17 @@ class MyAgent(RoutedAgent):
                      Respond with ONLY "ACCEPT" or "REJECT" in the first line of your response.
                      Provide a reasoning consist in either 'POSITIVE' or 'NEGATIVE' or 'PRIVATE' or 'UNUSED' for each rule_ID.
                      Only respond based on the provided policies and information. Do not make broader considerations.
-                     - 'POSITIVE' means that the rule_ID lead to accepting the connection.
-                     - 'NEGATIVE' means that the rule_ID lead to rejecting the connection.
+                     - 'POSITIVE' means that the rule_ID lead to accepting the connection as that policy was fully respected by the requester information.
+                     - 'NEGATIVE' means that the rule_ID lead to rejecting the connection as the requester information partially or totally violates the policy.
                      - 'PRIVATE' means that the rule_ID lead to a decision using private information.
-                     - 'UNUSED' means that the rule_ID was not used to deciding the connection.
+                     - 'UNUSED' means that the rule_ID was not used in deciding the connection.
                     """
 
         if message.feedback != "":
-            prompt += f"\nConsider this feedback on a previous answer: {message.feedback}."
+            await self._model_context_dict[message.requester].add_message(UserMessage(content=message.feedback, source="OrchestratorAgent"))
+            #prompt += f"\nConsider this feedback on a previous answer: {message.feedback}."
 
-        user_information_prompt = f"These are {self.id}'s policies: {self._policies}.\nThese are {self.id}\npublic information: {self._public_information}.\nThese are {self.id} private information: {self._private_information}."
+        #user_information_prompt = f"These are {self.id}'s policies: {self._policies}.\nThese are {self.id}\npublic information: {self._public_information}.\nThese are {self.id} private information: {self._private_information}."
         # UserMessage(content=prompt, source=self._user),
 
-        return await self.evaluate_connection(context, prompt, user_information_prompt)
+        return await self.evaluate_connection(context, prompt, message.requester)

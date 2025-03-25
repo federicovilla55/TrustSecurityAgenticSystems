@@ -16,7 +16,7 @@ to connect them without considering which connection are approved or refused.
 async def test_agent_implementation():
     await Runtime.start_runtime()
 
-    model_name = "llama3.2:3b"
+    model_name = "qwen2.5"
     model_client_my_agent = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.7)
     model_client_orchestrator = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.5)
 
@@ -43,11 +43,12 @@ async def test_agent_implementation():
     registered_agents = await Runtime.send_message(GetRequest(request_type=RequestType.GET_REGISTERED_AGENTS.value), agent_type="orchestrator_agent")
 
     await Runtime.stop_runtime()
-    #await Runtime.close_runtime()
+    await Runtime.close_runtime()
 
     print("Test Runtime Finished.")
 
-    #exit()
+    print(relations)
+    print(registered_agents)
 
     # Check all agents have been registered
     print(registered_agents)

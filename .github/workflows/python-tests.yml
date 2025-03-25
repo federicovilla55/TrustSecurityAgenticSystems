@@ -28,6 +28,4 @@ jobs:
 
       - name: Run tests
         run: |
-          echo "Skipping tests..."
-          exit 0
           pytest src/tests/ --asyncio-mode=auto -s

@@ -9,7 +9,7 @@ import asyncio
 from ..enums import *
 from ..models import (
     SetupMessage, ConfigurationMessage, PairingRequest,
-    PairingResponse, GetRequest, MatchedAgents
+    PairingResponse, GetRequest, GetResponse
 )
 from ..utils import extract_section, remove_chain_of_thought, separate_categories, extract_json
 
@@ -32,6 +32,12 @@ class MyAgent(RoutedAgent):
         self._model_client = model_client
         self.paired_agents : Set[str] = set()
         self.refused_agents : Set[str] = set()
+
+    def get_public_information(self):
+        return " ".join(item['content'] for item in self._public_information)
+
+    def get_policies(self):
+        return " ".join(item['content'] for item in self._policies)
 
     async def evaluate_connection(self, context, prompt, requester : str) -> PairingResponse:
         llm_answer = await self._model_client.create(
@@ -176,7 +182,7 @@ class MyAgent(RoutedAgent):
                      Find if there is compatibility between the {message.requester}'s information and {self.id}'s policies and information.
                      These are {message.requester}'s public information: {message.requester_information}.\n
                      Respond with ONLY "ACCEPT" or "REJECT" in the first line of your response.
-                     Provide a reasoning consist in either 'POSITIVE' or 'NEGATIVE' or 'PRIVATE' or 'UNUSED' for each rule_ID.
+                     Provide a reasoning consist in either 'POSITIVE' or 'NEGATIVE' or 'PRIVATE' or 'UNUSED' for each rule_ID and the unique ID for that rule.
                      Only respond based on the provided policies and information. Do not make broader considerations.
                      - 'POSITIVE' means that the rule_ID lead to accepting the connection as that policy was fully respected by the requester information.
                      - 'NEGATIVE' means that the rule_ID lead to rejecting the connection as the requester information partially or totally violates the policy.

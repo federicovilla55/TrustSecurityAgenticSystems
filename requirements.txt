@@ -1,5 +1,5 @@
-autogen-core==0.4.8
-autogen-ext==0.4.8
-openai==1.65.3
+autogen-core==0.5.1
+autogen-ext==0.5.1
+openai==1.72.0
 tiktoken==0.9.0
-typing_extensions~=4.12.2
+typing_extensions~=4.13.1

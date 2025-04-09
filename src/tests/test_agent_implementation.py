@@ -16,7 +16,7 @@ to connect them without considering which connection are approved or refused.
 async def test_agent_implementation():
     await Runtime.start_runtime()
 
-    model_name = "qwen2.5"
+    model_name = "meta-llama/Llama-3.3-70B-Instruct"
     model_client_my_agent = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.7)
     model_client_orchestrator = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.5)
 
@@ -36,6 +36,7 @@ async def test_agent_implementation():
     await charlie.setup_user("I am Charlie, a researcher at Microsoft in Zurich. I enjoy running, competitive programming and studying artificial intelligence. I want to connect to people with my same interests or from my same organization")
     await david.setup_user("I am David, a UZH Finance student. I really like studying finance, especially personal finance. I like hiking and running. I want to connect to other people from Zurich or with similar interests.")
 
+
     await Runtime.stop_runtime()
     await Runtime.start_runtime()
 
@@ -44,6 +45,9 @@ async def test_agent_implementation():
 
     await Runtime.stop_runtime()
     await Runtime.close_runtime()
+
+    await model_client_my_agent.close()
+    await model_client_orchestrator.close()
 
     print("Test Runtime Finished.")
 
@@ -86,7 +90,6 @@ async def test_agent_implementation():
             if a == agent and r == Relation.ACCEPTED:
                 connections.append(b)
         print(f"- {agent} : {', '.join(connections)}")
-
 
         
     

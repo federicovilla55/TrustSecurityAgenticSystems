@@ -1,7 +1,7 @@
 from .enums import *
 from .models import (
     SetupMessage, ConfigurationMessage, PairingRequest,
-    PairingResponse, GetRequest, MatchedAgents
+    PairingResponse, GetRequest, GetResponse
 )
 from .agents import *
 from .utils import (

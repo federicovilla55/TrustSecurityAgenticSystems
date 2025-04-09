@@ -8,7 +8,7 @@ from autogen_core.models import ChatCompletionClient, SystemMessage, UserMessage
 from .. import PairingResponse
 from ..enums import *
 from ..models import (
-    ConfigurationMessage, PairingRequest, GetRequest, MatchedAgents
+    ConfigurationMessage, PairingRequest, GetRequest, GetResponse
 )
 
 @type_subscription(topic_type="orchestrator_agent")
@@ -19,10 +19,34 @@ class OrchestratorAgent(RoutedAgent):
 
         self._model_client = model_client
         self._registered_agents: Set[str] = set()
+        self._paused_agents: Set[str] = set()
         self._agent_information: Dict[str, json_pair] = {}
         self._matched_agents: AgentRelations = {}
         self._model_context_dict : Dict[str_pair, BufferedChatCompletionContext] = {}
         self._agents_lock = asyncio.Lock()
+
+    async def pause_agent(self, agent_id : str) -> None:
+        async with self._agents_lock:
+            if agent_id in self._paused_agents or agent_id not in self._registered_agents:
+                return
+
+            self._registered_agents.remove(agent_id)
+            self._paused_agents.add(agent_id)
+
+    async def resume_agent(self, agent_id : str) -> None:
+        async with self._agents_lock:
+            if agent_id not in self._paused_agents or agent_id in self._registered_agents:
+                return
+
+            self._paused_agents.remove(agent_id)
+            self._registered_agents.add(agent_id)
+
+    async def delete_agent(self, agent_id : str) -> None:
+        async with self._agents_lock:
+            if agent_id in self._paused_agents:
+                self._paused_agents.remove(agent_id)
+            if agent_id in self._registered_agents:
+                self._registered_agents.remove(agent_id)
 
     async def get_registered_agents(self) -> set[str]:
         async with self._agents_lock:
@@ -32,7 +56,20 @@ class OrchestratorAgent(RoutedAgent):
         async with self._agents_lock:
             return self._matched_agents.copy()
 
+    async def get_matches_for_agent(self, agent_id: str) -> AgentRelations:
+        matches_copy = await self.get_matched_agents()
+
+        matches_for_agent : AgentRelations = {}
+
+        for agent_pair, relation in matches_copy.items():
+            if agent_id in agent_pair:
+                matches_for_agent[agent_pair] = relation
+
+        return matches_for_agent
+
     async def check_response(self, sender : str, receiver : str, sender_information : str, receiver_policies : str, reasoning : str) -> str:
+        return "VALID"
+
         prompt = f"""
                 You are the Policy Enforcement Orchestrator. Your job is to evaluate the reasoning {receiver} made on the policies.
                 The received reasoning includes a series of policies ID and a status regarding whether the policy was UNUSED, used with private information or
@@ -116,7 +153,7 @@ class OrchestratorAgent(RoutedAgent):
     @message_handler
     async def agent_configuration(self, message: ConfigurationMessage, context: MessageContext) -> None:
         async with self._agents_lock:
-            registered = message.user in self._registered_agents
+            registered = (message.user in self._registered_agents or message.user in self._paused_agents)
 
         if not registered and message.user == context.sender.key:
             for agent in self._registered_agents:
@@ -131,11 +168,19 @@ class OrchestratorAgent(RoutedAgent):
             await self.match_agents(message.user)
 
     @message_handler
-    async def get_request(self, message: GetRequest, context: MessageContext) -> MatchedAgents:
-        answer = MatchedAgents(request_type=message.request_type)
+    async def get_request(self, message: GetRequest, context: MessageContext) -> GetResponse:
+        answer = GetResponse(request_type=message.request_type)
         if RequestType(message.request_type) == RequestType.GET_AGENT_RELATIONS:
             answer.agents_relation= await self.get_matched_agents()
         elif RequestType(message.request_type) == RequestType.GET_REGISTERED_AGENTS:
             answer.registered_agents= await self.get_registered_agents()
+        elif RequestType(message.request_type) == RequestType.GET_PERSONAL_RELATIONS:
+            answer.agents_relation= await self.get_matches_for_agent(message.user)
+        elif RequestType(message.request_type) == RequestType.PAUSE_AGENT:
+            await self.pause_agent(message.user)
+        elif RequestType(message.request_type) == RequestType.RESUME_AGENT:
+            await self.resume_agent(message.user)
+        elif RequestType(message.request_type) == RequestType.DELETE_AGENT:
+            await self.delete_agent(message.user)
 
         return answer

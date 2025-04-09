@@ -47,9 +47,10 @@ class GetRequest:
     Request to get information from the orchestrator's data
     """
     request_type: RequestType
+    user: str = ""
 
 @dataclass
-class MatchedAgents:
+class GetResponse:
     """
     Answer to the orchestrator get request
     """

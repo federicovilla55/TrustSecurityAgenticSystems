@@ -10,6 +10,10 @@ class Relation(Enum):
 class RequestType(Enum):
     GET_AGENT_RELATIONS = 1
     GET_REGISTERED_AGENTS = 2
+    GET_PERSONAL_RELATIONS = 3
+    PAUSE_AGENT = 4
+    RESUME_AGENT = 5
+    DELETE_AGENT = 6
 
 class ModelType(Enum):
     OLLAMA = 1

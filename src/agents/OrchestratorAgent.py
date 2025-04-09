@@ -108,8 +108,8 @@ class OrchestratorAgent(RoutedAgent):
 
         pair_response: PairingResponse = PairingResponse(Relation.UNCONTACTED, "")
 
+        self._model_context_dict[(sender, receiver)] = BufferedChatCompletionContext(buffer_size=5)
         for i in range(5):
-            self._model_context_dict[(sender, receiver)] = BufferedChatCompletionContext(buffer_size=5)
             pair_response: PairingResponse = await self.send_message(
                 PairingRequest(
                     requester=sender, requester_information=sender_public_information,

@@ -33,10 +33,12 @@ class MyAgent(RoutedAgent):
         self.paired_agents : Set[str] = set()
         self.refused_agents : Set[str] = set()
 
-    def get_public_information(self):
+        print(f"Created: {self._id}")
+
+    def get_public_information(self) -> str:
         return " ".join(item['content'] for item in self._public_information)
 
-    def get_policies(self):
+    def get_policies(self) -> str:
         return " ".join(item['content'] for item in self._policies)
 
     async def evaluate_connection(self, context, prompt, requester : str) -> PairingResponse:
@@ -101,10 +103,13 @@ class MyAgent(RoutedAgent):
         # TODO: add this
         # await self._model_context.add_message(message)
 
+        print("READY FOR LLM")
+
         llm_answer = await self._model_client.create(
             messages=[self._system_message, UserMessage(content=prompt_information, source=self._user)],
             cancellation_token=context.cancellation_token,
         )
+
 
         await self._model_context.add_message(UserMessage(content=llm_answer.content, source=self._user))
 
@@ -162,12 +167,16 @@ class MyAgent(RoutedAgent):
         configuration_message = ConfigurationMessage(
             user=self._user,
             user_policies=self._policies,
-            user_information=self._public_information,
+            user_information= self._public_information,
         )
+
+        print("PUBLISHING MESSAGE")
 
         await self.publish_message(
             configuration_message, topic_id=TopicId("orchestrator_agent", "default")
         )
+
+
 
     @message_handler
     async def handle_pairing_request(self, message: PairingRequest, context: MessageContext) -> PairingResponse:
@@ -198,3 +207,6 @@ class MyAgent(RoutedAgent):
         # UserMessage(content=prompt, source=self._user),
 
         return await self.evaluate_connection(context, prompt, message.requester)
+
+    async def handle_get_request(self):
+        ...

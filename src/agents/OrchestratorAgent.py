@@ -1,5 +1,6 @@
 import asyncio
 import json
+from asyncio import Task
 from typing import Dict, List, Optional, Tuple, Set, Any, Coroutine
 from autogen_core import AgentId, MessageContext, RoutedAgent, SingleThreadedAgentRuntime, message_handler, type_subscription, TopicId, DefaultTopicId
 from autogen_core.model_context import BufferedChatCompletionContext
@@ -99,6 +100,8 @@ class OrchestratorAgent(RoutedAgent):
         # The sender sends its public information while the receiver checks this information using its policies and private information
         feedback = ""
 
+        print("CHECKING...")
+
         async with self._agents_lock:
             sender_information = self._agent_information[sender]
             receiver_information = self._agent_information[receiver]
@@ -152,6 +155,7 @@ class OrchestratorAgent(RoutedAgent):
 
     @message_handler
     async def agent_configuration(self, message: ConfigurationMessage, context: MessageContext) -> None:
+        print("HEY CONFIG")
         async with self._agents_lock:
             registered = (message.user in self._registered_agents or message.user in self._paused_agents)
 
@@ -166,6 +170,7 @@ class OrchestratorAgent(RoutedAgent):
 
             # in a more complex application maybe this could be scheduled as a background task: `asyncio.create_task`
             await self.match_agents(message.user)
+            #return asyncio.create_task(self.match_agents(message.user))
 
     @message_handler
     async def get_request(self, message: GetRequest, context: MessageContext) -> GetResponse:

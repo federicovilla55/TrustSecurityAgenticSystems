@@ -1,14 +1,18 @@
 from typing import Optional
 from autogen_core import SingleThreadedAgentRuntime, AgentId, RoutedAgent
 from autogen_core.models import ChatCompletionClient
+import asyncio
 
 from src import OrchestratorAgent, MyAgent
 
 """
 Singleton class for the SingleThreadedAgentRuntime.
 """
+
+
 class Runtime:
-    _instance : Optional[SingleThreadedAgentRuntime] = None
+    _instance: Optional[SingleThreadedAgentRuntime] = None
+    _shutdown_flag = False
 
     @classmethod
     def _get_instance(cls) -> SingleThreadedAgentRuntime:
@@ -17,39 +21,73 @@ class Runtime:
         return cls._instance
 
     @classmethod
-    async def start_runtime(cls) -> None:
+    def start_runtime(cls) -> None:
         instance = cls._get_instance()
+        cls._shutdown_flag = False
+        print("START.")
         instance.start()
 
     @classmethod
-    async def stop_runtime(cls) -> None:
+    async def stop_runtime_when_idle(cls) -> None:
+        cls._shutdown_flag = True
+        print("Starting Closure...")
+
         instance = cls._get_instance()
         await instance.stop_when_idle()
+        print("STOPPED.")
+
+    @classmethod
+    async def stop_forced(cls):
+        """Immediately cancel all tasks and shut down"""
+        cls._shutdown_flag = True
+        print("Forced shutdown initiated.")
+
+        await cls.close_runtime()
+        print("Runtime force stopped.")
 
     @classmethod
     async def close_runtime(cls) -> None:
         instance = cls._get_instance()
         await instance.close()
+        print("Runtime Closed")
 
     @classmethod
-    async def register_orchestrator(cls, model_client : ChatCompletionClient):
-        await OrchestratorAgent.register(cls._get_instance(), "orchestrator_agent",
-                                         lambda: OrchestratorAgent(model_client=model_client, description="An helpful orchestrator agent."))
+    async def register_orchestrator(cls, model_client: ChatCompletionClient):
+        await OrchestratorAgent.register(
+            cls._get_instance(),
+            "orchestrator_agent",
+            lambda: OrchestratorAgent(
+                model_client=model_client,
+                description="A helpful orchestrator agent."
+            )
+        )
+
     @classmethod
-    async def register_my_agent(cls, model_client : ChatCompletionClient):
-        await MyAgent.register(cls._get_instance(), "my_agent",
-                               lambda: MyAgent(model_client=model_client, description="An helpful personal agent."))
+    async def register_my_agent(cls, model_client: ChatCompletionClient):
+        await MyAgent.register(
+            cls._get_instance(),
+            "my_agent",
+            lambda: MyAgent(
+                model_client=model_client,
+                description="A helpful personal agent."
+            )
+        )
+
     @classmethod
-    async def send_message(cls, message, agent_type: str, agent_key: Optional[str] = None):
+    async def send_message(cls, message, agent_type, agent_key="default"):
+        if cls._shutdown_flag:
+            raise RuntimeError("Runtime is shutting down")
+        
         instance = cls._get_instance()
-        return await instance.send_message(message, AgentId(agent_type, agent_key if agent_key else "default"))
+        print(f"SENDING {message} TO: {AgentId(agent_type, agent_key)}")
+        return await instance.send_message(message, AgentId(agent_type, agent_key))
 
     @classmethod
     async def get_agent_relations(cls, message) -> dict:
-        answer = await cls.send_message(message, "orchestrator_agent", )
+        answer = await cls.send_message(message, "orchestrator_agent")
         return answer.agents_relation
 
     @classmethod
     async def get_registered_agents(cls, message) -> set[str]:
-        answer = await cls.send_message(message, "orchestrator_agent", )
+        answer = await cls.send_message(message, "orchestrator_agent")
         return answer.registered_agents

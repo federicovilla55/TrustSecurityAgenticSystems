@@ -1,3 +1,5 @@
+import time
+
 import pytest
 # pytest is not defined in the project requirements
 
@@ -14,7 +16,7 @@ to connect them without considering which connection are approved or refused.
 """
 @pytest.mark.asyncio
 async def test_agent_implementation():
-    await Runtime.start_runtime()
+    Runtime.start_runtime()
 
     model_name = "meta-llama/Llama-3.3-70B-Instruct"
     model_client_my_agent = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.7)
@@ -36,15 +38,13 @@ async def test_agent_implementation():
     await charlie.setup_user("I am Charlie, a researcher at Microsoft in Zurich. I enjoy running, competitive programming and studying artificial intelligence. I want to connect to people with my same interests or from my same organization")
     await david.setup_user("I am David, a UZH Finance student. I really like studying finance, especially personal finance. I like hiking and running. I want to connect to other people from Zurich or with similar interests.")
 
-
-    await Runtime.stop_runtime()
-    await Runtime.start_runtime()
+    await Runtime.stop_runtime_when_idle()
+    Runtime.start_runtime()
 
     relations = await Runtime.send_message(GetRequest(request_type=RequestType.GET_AGENT_RELATIONS.value), agent_type="orchestrator_agent")
     registered_agents = await Runtime.send_message(GetRequest(request_type=RequestType.GET_REGISTERED_AGENTS.value), agent_type="orchestrator_agent")
 
-    await Runtime.stop_runtime()
-    await Runtime.close_runtime()
+    await Runtime.stop_runtime_when_idle()
 
     await model_client_my_agent.close()
     await model_client_orchestrator.close()

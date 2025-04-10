@@ -27,6 +27,10 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-asyncio pytest-cov python-multipart
 
-      - name: Run tests
+      - name: Run tests Agents Implementation
         run: |
-          pytest src/tests/ --asyncio-mode=auto -s
+          pytest src/tests/test_agent_implementation.py --asyncio-mode=auto -s
+      
+      - name: Run tests FastAPI
+        run: |
+          pytest src/tests/test_fast_api.py --asyncio-mode=auto -s

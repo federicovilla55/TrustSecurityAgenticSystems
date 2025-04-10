@@ -62,34 +62,7 @@ async def register_my_agent(model_client : ChatCompletionClient):
     await Runtime.register_my_agent(model_client=model_client)
 
 async def run():
-    await Runtime.start_runtime()
-
-    model_client = get_model(model_type=ModelType.OLLAMA, model="phi4:latest")
-
-    await register_agents(model_client)
-
-    print("Test Runtime Started.")
-
-    alice = Client("Alice")
-    bob = Client("Bob")
-    charlie = Client("Charlie")
-    david = Client("David")
-
-    # Some random user for
-    await alice.setup_user("I am Alice, an ETH student. I study computer science and I want to connect to other students from ETH or workers from Big tech companies.")
-    await bob.setup_user("I am Bob, an ETH student. I study cyber security and I want to connect to other students with similar interests or that study in my same university.")
-    await charlie.setup_user("I am Charlie, a researcher at Microsoft in Zurich. I enjoy running, competitive programming and studying artificial intelligence. I want to connect to people with my same interests or from my same organization")
-    await david.setup_user("I am David, a UZH Finance student. I really like studying finance, especially personal finance. I like hiking and running. I want to connect to other people from Zurich or with similar interests.")
-
-    await Runtime.stop_runtime()
-    await Runtime.start_runtime()
-
-    relations = await Runtime.send_message(GetRequest(request_type=RequestType.GET_AGENT_RELATIONS.value), agent_type="orchestrator_agent")
-    registered_agents = await Runtime.send_message(GetRequest(request_type=RequestType.GET_REGISTERED_AGENTS.value), agent_type="orchestrator_agent")
-    await Runtime.stop_runtime()
-    await Runtime.close_runtime()
-
-    print(f"{'~'*20}\nRelations: {relations}\nRegistered: {registered_agents}\n{'~'*20}\n")
+    ...
 
 if __name__ == "__main__":
     asyncio.run(run())

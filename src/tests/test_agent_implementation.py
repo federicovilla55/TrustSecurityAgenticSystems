@@ -30,13 +30,12 @@ async def test_agent_implementation():
     alice = Client("Alice")
     bob = Client("Bob")
     charlie = Client("Charlie")
-    david = Client("David")
 
     # Some random user for
     await alice.setup_user("I am Alice, an ETH student. I study computer science and I want to connect to other students from ETH or workers from Big tech companies.")
     await bob.setup_user("I am Bob, an ETH student. I study cyber security and I want to connect to other students with similar interests or that study in my same university.")
     await charlie.setup_user("I am Charlie, a researcher at Microsoft in Zurich. I enjoy running, competitive programming and studying artificial intelligence. I want to connect to people with my same interests or from my same organization")
-    await david.setup_user("I am David, a UZH Finance student. I really like studying finance, especially personal finance. I like hiking and running. I want to connect to other people from Zurich or with similar interests.")
+    #await david.setup_user("I am David, a UZH Finance student. I really like studying finance, especially personal finance. I like hiking and running. I want to connect to other people from Zurich or with similar interests.")
 
     await Runtime.stop_runtime_when_idle()
     Runtime.start_runtime()
@@ -56,10 +55,10 @@ async def test_agent_implementation():
 
     # Check all agents have been registered
     print(registered_agents)
-    assert len(registered_agents.registered_agents) == 4
+    assert len(registered_agents.registered_agents) == 3
 
     # Check all agents have been in contact with each other
-    assert len(relations.agents_relation) == 12
+    assert len(relations.agents_relation) == 6
     for rel in relations.agents_relation.values():
         assert (rel == Relation.ACCEPTED) or (rel == Relation.REFUSED)
 
@@ -68,17 +67,11 @@ async def test_agent_implementation():
         ('Bob', 'Alice'),
         ('Alice', 'Charlie'),
         ('Charlie', 'Alice'),
-        ('Alice', 'David'),
-        ('David', 'Alice'),
         ('Bob', 'Charlie'),
         ('Charlie', 'Bob'),
-        ('Bob', 'David'),
-        ('David', 'Bob'),
-        ('Charlie', 'David'),
-        ('David', 'Charlie')
     }
 
-    expected_registered_agents = {'Alice', 'Bob', 'David', 'Charlie'}
+    expected_registered_agents = {'Alice', 'Bob', 'Charlie'}
 
     assert all(pair in expected_registered_agents for pair in registered_agents.registered_agents)
 

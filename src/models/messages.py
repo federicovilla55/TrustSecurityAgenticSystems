@@ -58,3 +58,12 @@ class GetResponse:
     agents_relation: AgentRelations = None
     registered_agents: Set[str] = None
     # more types should be added when the orchestrator will contain more information
+
+@dataclass
+class GetUserInformation:
+    """
+    Message sent by the MyAgent, the personal agent, to the user
+    """
+    public_information: dict
+    private_information: dict
+    policies: dict

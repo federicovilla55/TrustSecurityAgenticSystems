@@ -44,6 +44,7 @@ def create_access_token(data: dict) -> str:
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def get_client(username : str) -> Client:
+    print(database)
     return database[username]['client']
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
@@ -102,7 +103,7 @@ async def setup_user(setup_json: dict, user_token_data: str = Depends(get_curren
 
     database[setup_json["user"]]['client'] = client
 
-    asyncio.create_task(client.setup_user(setup_json["content"]))
+    await client.setup_user(setup_json["content"])
 
     print("CFIN")
 
@@ -129,7 +130,7 @@ async def get_relations(request_json: dict, current_user: TokenData = Depends(ge
 async def pause_agent(current_user: str = Depends(get_current_user)):
     client = get_client(current_user)
 
-    asyncio.create_task(client.pause_user())
+    await client.pause_user()
 
     return {"status": "pause_requested"}
 
@@ -137,7 +138,7 @@ async def pause_agent(current_user: str = Depends(get_current_user)):
 async def resume_agent(current_user: str = Depends(get_current_user)):
     client = get_client(current_user)
 
-    asyncio.create_task(client.resume_user())
+    await client.resume_user()
 
     return {"status": "resume_requested"}
 
@@ -145,9 +146,32 @@ async def resume_agent(current_user: str = Depends(get_current_user)):
 async def delete_agent(current_user: str = Depends(get_current_user)):
     client = get_client(current_user)
 
-    asyncio.create_task(client.delete_user())
+    await client.delete_user()
 
     return {"status": "delete_requested"}
+
+@router.post("/get_information")
+async def get_information(information : dict, current_user: str = Depends(get_current_user)):
+    information_type = RequestType(information['type'])
+    client = get_client(current_user)
+
+    response = {}
+
+    if information_type == RequestType.GET_PUBLIC_INFORMATION:
+        response['public_information'] = await client.get_public_information()
+    elif information_type == RequestType.GET_PRIVATE_INFORMATION:
+        response['private_information'] = await client.get_private_information()
+    elif information_type == RequestType.GET_POLICIES:
+        response['policies'] = await client.get_policies()
+    elif information_type == RequestType.GET_USER_INFORMATION:
+        ...
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid request type"
+        )
+
+    return response
 
 app.include_router(router)
 

@@ -41,7 +41,7 @@ class Client:
         # this should return the relations the agents has made, so the agents that have been connected and confirmed by the agent only
         matches = (
             await Runtime.send_message(
-                    message=GetRequest(request_type=RequestType.GET_PERSONAL_RELATIONS, user=self._username),
+                    message=GetRequest(request_type=RequestType.GET_PERSONAL_RELATIONS.value, user=self._username),
                     agent_type="orchestrator_agent",
             )
         )
@@ -50,7 +50,7 @@ class Client:
         # this should return the relations the agents have made and that the humans have confirmed.
         pairings = (
             await Runtime.send_message(
-                message=GetRequest(request_type=RequestType.GET_PERSONAL_RELATIONS, user=self._username),
+                message=GetRequest(request_type=RequestType.GET_PERSONAL_RELATIONS.value, user=self._username),
                 agent_type="orchestrator_agent",
             )
         )
@@ -61,20 +61,44 @@ class Client:
         # To Implement
         pass
 
-    async def get_public_information(self) -> str:
+    async def get_public_information(self) -> dict:
         # ask MyAgent for my public information
-        print(f"{self._username} public information: ")
-        return ""
+        get_response : GetUserInformation = (
+            await Runtime.send_message(
+                message=GetRequest(request_type=RequestType.GET_PUBLIC_INFORMATION.value, user=self._username),
+                agent_type="my_agent",
+                agent_key=self._username
+            )
+        )
+        print(get_response)
 
-    async def get_private_information(self) -> str:
+        return get_response.public_information
+
+    async def get_private_information(self) -> dict:
         # ask MyAgent for my private information
-        print(f"{self._username} private information: ")
-        return ""
+        get_response : GetUserInformation = (
+            await Runtime.send_message(
+                message=GetRequest(request_type=RequestType.GET_PRIVATE_INFORMATION.value, user=self._username),
+                agent_type="my_agent",
+                agent_key=self._username
+            )
+        )
+        print(get_response)
 
-    async def policies(self) -> str:
+        return get_response.private_information
+    
+    async def get_policies(self) -> dict:
         # ask MyAgent for my policies
-        print(f"{self._username} policies: ")
-        return ""
+        get_response : GetUserInformation = (
+            await Runtime.send_message(
+                message=GetRequest(request_type=RequestType.GET_POLICIES.value, user=self._username),
+                agent_type="my_agent",
+                agent_key=self._username
+            )
+        )
+        print(get_response)
+
+        return get_response.policies
 
     async def send_feedback(self, relation_id : str, feedback : bool):
         # give feedback in one of the multiple types of agent relation

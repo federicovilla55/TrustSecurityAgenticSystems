@@ -14,6 +14,10 @@ class RequestType(Enum):
     PAUSE_AGENT = 4
     RESUME_AGENT = 5
     DELETE_AGENT = 6
+    GET_PUBLIC_INFORMATION = 7
+    GET_PRIVATE_INFORMATION = 8
+    GET_POLICIES = 9
+    GET_USER_INFORMATION = 10
 
 class ModelType(Enum):
     OLLAMA = 1

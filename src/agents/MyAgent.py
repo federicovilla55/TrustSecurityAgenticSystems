@@ -11,6 +11,9 @@ from ..models import (
     SetupMessage, ConfigurationMessage, PairingRequest,
     PairingResponse, GetRequest, GetResponse
 )
+
+from src import GetUserInformation
+
 from ..utils import extract_section, remove_chain_of_thought, separate_categories, extract_json
 
 class MyAgent(RoutedAgent):
@@ -37,6 +40,9 @@ class MyAgent(RoutedAgent):
 
     def get_public_information(self) -> str:
         return " ".join(item['content'] for item in self._public_information)
+    
+    def get_private_information(self) -> str:
+        return " ".join(item['content'] for item in self._private_information)
 
     def get_policies(self) -> str:
         return " ".join(item['content'] for item in self._policies)
@@ -61,6 +67,7 @@ class MyAgent(RoutedAgent):
         else:
             print(f"ERROR: Unknown answer when handling pairing request...")
             return PairingResponse(Relation.REFUSED, result)
+
 
     @message_handler
     async def handle_setup(self, message: SetupMessage, context: MessageContext) -> None:
@@ -177,6 +184,24 @@ class MyAgent(RoutedAgent):
         )
 
 
+    '''@message_handler
+    async def handle_setup(self, message: SetupMessage, context: MessageContext) -> None:
+        self._user = message.user
+
+        configuration_message = ConfigurationMessage(
+            user=self._user,
+            user_policies={},
+            user_information= {},
+        )
+
+        print("PUBLISHING MESSAGE")
+
+        await self.publish_message(
+            configuration_message, topic_id=TopicId("orchestrator_agent", "default")
+        )'''
+
+
+
 
     @message_handler
     async def handle_pairing_request(self, message: PairingRequest, context: MessageContext) -> PairingResponse:
@@ -206,7 +231,28 @@ class MyAgent(RoutedAgent):
         #user_information_prompt = f"These are {self.id}'s policies: {self._policies}.\nThese are {self.id}\npublic information: {self._public_information}.\nThese are {self.id} private information: {self._private_information}."
         # UserMessage(content=prompt, source=self._user),
 
+        #return PairingResponse(Relation.ACCEPTED, reasoning="accept")
         return await self.evaluate_connection(context, prompt, message.requester)
 
-    async def handle_get_request(self):
-        ...
+    @message_handler
+    async def handle_get_request(self, message : GetRequest, context: MessageContext) -> GetUserInformation:
+        answer = GetUserInformation(
+            public_information={},
+            private_information={},
+            policies={}
+        )
+
+        if RequestType(message.request_type) == RequestType.GET_PUBLIC_INFORMATION:
+            answer.public_information = self._public_information
+        elif RequestType(message.request_type) == RequestType.GET_PRIVATE_INFORMATION:
+            answer.private_information = self._private_information
+        elif RequestType(message.request_type) == RequestType.GET_POLICIES:
+            answer.policies = self._policies
+        elif RequestType(message.request_type) == RequestType.GET_USER_INFORMATION:
+            answer.public_information = self._public_information
+            answer.private_information = self._private_information
+            answer.policies = self._policies
+
+        print("EXPECTED: ", answer)
+
+        return answer

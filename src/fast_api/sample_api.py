@@ -15,7 +15,7 @@ import uvicorn
 
 from src import (
     Runtime, SetupMessage, ConfigurationMessage, PairingRequest,
-    PairingResponse, GetRequest, RequestType, Client
+    PairingResponse, GetRequest, RequestType, Client, Status
 )
 
 SECRET_KEY = os.getenv("SECRET_KEY") if os.getenv("SECRET_KEY") else "secret"
@@ -29,6 +29,8 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # To Do: Use a real database
 database = {}
+
+lock = asyncio.Lock()
 
 class Token(BaseModel):
     access_token: str
@@ -67,6 +69,26 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
 
     return username
 
+@router.post("/register")
+async def register(registration_data_json : dict) -> dict:
+    async with lock:
+        if registration_data_json["username"] in database:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Username already registered",
+            )
+
+
+        database[registration_data_json["username"]] = {
+            "username": registration_data_json["username"],
+            "hashed_password": pwd_context.hash(registration_data_json["password"]),
+        }
+
+        print("REGISTERED, ", database)
+
+    return {"status" : f"{registration_data_json['username']} is now registered."}
+
+
 @router.post("/token", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> dict:
     print("LOGIN!")
@@ -86,8 +108,9 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> dict:
 @router.post("/setup")
 async def setup_user(setup_json: dict, user_token_data: str = Depends(get_current_user)):
     print(setup_json)
-    
+
     if setup_json["user"] not in database:
+        print("NOT IN DB")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User not found"
@@ -103,7 +126,14 @@ async def setup_user(setup_json: dict, user_token_data: str = Depends(get_curren
 
     database[setup_json["user"]]['client'] = client
 
-    await client.setup_user(setup_json["content"])
+    operation : Status = await client.setup_user(setup_json["content"])
+
+    if operation != Status.COMPLETED:
+        print("NOT COMPLETED")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Setup failed"
+        )
 
     print("CFIN")
 
@@ -111,26 +141,54 @@ async def setup_user(setup_json: dict, user_token_data: str = Depends(get_curren
 
 
 
-@router.get("/relations")
-async def get_relations(request_json: dict, current_user: TokenData = Depends(get_current_user)):
-    request = GetRequest(request_type=RequestType(1), user=request_json['user'])
-    if request.user != current_user.username:
+@router.post("/change_information")
+async def change_information(information_json: dict, user_token_data: str = Depends(get_current_user)):
+    if information_json["user"] not in database or "public_information" not in information_json.keys() \
+            or "private_information" not in information_json.keys() or "policies" not in information_json.keys():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not found"
+        )
+
+    if information_json["user"] != user_token_data:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Cannot setup another user"
         )
 
-    response = await Runtime.send_message(
-        message=request,
-        agent_type="orchestrator_agent"
-    )
-    return asdict(response)
+    client = Client(information_json["user"])
+
+    operation : Status = await client.change_information(information_json["public_information"], information_json["private_information"], information_json["policies"])
+
+    if operation != Status.COMPLETED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Operation failed"
+        )
+
+    return {"status": "Information updated."}
+
+@router.get("/relations")
+async def get_relations(current_user: str = Depends(get_current_user)):
+    client = get_client(current_user)
+
+    relations = await client.get_agent_established_relations()
+
+    response = {'relations': relations}
+
+    return response
 
 @router.post("/pause")
 async def pause_agent(current_user: str = Depends(get_current_user)):
     client = get_client(current_user)
 
-    await client.pause_user()
+    operation = await client.pause_user()
+
+    if operation != Status.COMPLETED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Pause Operation failed"
+        )
 
     return {"status": "pause_requested"}
 
@@ -138,7 +196,15 @@ async def pause_agent(current_user: str = Depends(get_current_user)):
 async def resume_agent(current_user: str = Depends(get_current_user)):
     client = get_client(current_user)
 
-    await client.resume_user()
+    operation = await client.resume_user()
+
+    operation = await client.pause_user()
+
+    if operation != Status.COMPLETED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Resume Operation failed"
+        )
 
     return {"status": "resume_requested"}
 
@@ -146,7 +212,15 @@ async def resume_agent(current_user: str = Depends(get_current_user)):
 async def delete_agent(current_user: str = Depends(get_current_user)):
     client = get_client(current_user)
 
-    await client.delete_user()
+    operation = await client.delete_user()
+
+    operation = await client.pause_user()
+
+    if operation != Status.COMPLETED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Delete Operation failed"
+        )
 
     return {"status": "delete_requested"}
 

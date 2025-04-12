@@ -14,30 +14,31 @@ class Client:
         self._client = httpx.AsyncClient()
         return self
 
-    async def setup_user(self, user_content: str) -> None:
-        await Runtime.send_message(SetupMessage(content=user_content, user=self._username), "my_agent", self._username)
+    async def setup_user(self, user_content: str) -> Status:
+        return await Runtime.send_message(SetupMessage(content=user_content, user=self._username), "my_agent", self._username)
 
-    async def pause_user(self) -> None:
-        await Runtime.send_message(
-            message=GetRequest(request_type=RequestType.PAUSE_AGENT.value, user=self._username),
+    async def pause_user(self) -> Status:
+        return await Runtime.send_message(
+            message=ActionRequest(request_type=ActionType.PAUSE_AGENT.value, user=self._username),
             agent_type="my_agent", agent_key=self._username
         )
 
-    async def resume_user(self) -> None:
-        await Runtime.send_message(
-            message=GetRequest(request_type=RequestType.RESUME_AGENT.value, user=self._username),
+
+    async def resume_user(self) -> Status:
+        return await Runtime.send_message(
+            message=ActionRequest(request_type=ActionType.RESUME_AGENT.value, user=self._username),
             agent_type="my_agent",
             agent_key=self._username
         )
 
-    async def delete_user(self) -> None:
-        await Runtime.send_message(
-            message=GetRequest(request_type=RequestType.DELETE_AGENT.value, user=self._username),
+    async def delete_user(self) -> Status:
+        return await Runtime.send_message(
+            message=ActionRequest(request_type=ActionType.DELETE_AGENT.value, user=self._username),
             agent_type="my_agent",
             agent_key=self._username
         )
 
-    async def get_agent_established_relations(self) -> None:
+    async def get_agent_established_relations(self) -> AgentRelations:
         # this should return the relations the agents has made, so the agents that have been connected and confirmed by the agent only
         matches = (
             await Runtime.send_message(
@@ -45,6 +46,8 @@ class Client:
                     agent_type="orchestrator_agent",
             )
         )
+
+        return matches
 
     async def get_pairing(self) -> AgentRelations:
         # this should return the relations the agents have made and that the humans have confirmed.
@@ -63,7 +66,7 @@ class Client:
 
     async def get_public_information(self) -> dict:
         # ask MyAgent for my public information
-        get_response : GetUserInformation = (
+        get_response : UserInformation = (
             await Runtime.send_message(
                 message=GetRequest(request_type=RequestType.GET_PUBLIC_INFORMATION.value, user=self._username),
                 agent_type="my_agent",
@@ -76,7 +79,7 @@ class Client:
 
     async def get_private_information(self) -> dict:
         # ask MyAgent for my private information
-        get_response : GetUserInformation = (
+        get_response : UserInformation = (
             await Runtime.send_message(
                 message=GetRequest(request_type=RequestType.GET_PRIVATE_INFORMATION.value, user=self._username),
                 agent_type="my_agent",
@@ -89,7 +92,7 @@ class Client:
     
     async def get_policies(self) -> dict:
         # ask MyAgent for my policies
-        get_response : GetUserInformation = (
+        get_response : UserInformation = (
             await Runtime.send_message(
                 message=GetRequest(request_type=RequestType.GET_POLICIES.value, user=self._username),
                 agent_type="my_agent",
@@ -99,6 +102,17 @@ class Client:
         print(get_response)
 
         return get_response.policies
+    
+    async def change_information(self, public_information : dict, private_information : dict, policies : dict) -> Status:
+        return await Runtime.send_message(
+            message=UserInformation(
+                public_information=public_information,
+                private_information=private_information,
+                policies=policies,
+            ),
+            agent_type="my_agent",
+            agent_key=self._username
+        )
 
     async def send_feedback(self, relation_id : str, feedback : bool):
         # give feedback in one of the multiple types of agent relation

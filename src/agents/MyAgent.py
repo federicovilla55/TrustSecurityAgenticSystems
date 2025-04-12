@@ -12,13 +12,16 @@ from ..models import (
     PairingResponse, GetRequest, GetResponse
 )
 
-from src import GetUserInformation
+from src import UserInformation
+from ..models.messages import ActionRequest
 
 from ..utils import extract_section, remove_chain_of_thought, separate_categories, extract_json
 
 class MyAgent(RoutedAgent):
     def __init__(self, description : str, model_client: ChatCompletionClient):
         super().__init__(description)
+        self._paused = False
+        self._user = None
         self._private_information = None
         self._policies = None
         self._public_information = None
@@ -68,9 +71,27 @@ class MyAgent(RoutedAgent):
             print(f"ERROR: Unknown answer when handling pairing request...")
             return PairingResponse(Relation.REFUSED, result)
 
+    async def notify_orchestrator(self, action_type : ActionType) -> Status:
+        message = ActionRequest(
+            request_type=action_type.value,
+            user=self._user,
+        )
+
+        await self.publish_message(
+            message=message, topic_id=TopicId("orchestrator_agent", "default")
+        )
+
+        return Status.COMPLETED
 
     @message_handler
-    async def handle_setup(self, message: SetupMessage, context: MessageContext) -> None:
+    async def handle_setup(self, message: SetupMessage, context: MessageContext) -> Status:
+        print("HEY: ", (self._user is not None or self._policies is not None or
+                self._public_information is not None or self._private_information is not None))
+        if (self._user is not None or self._policies is not None or
+                self._public_information is not None or self._private_information is not None):
+            print(f"Name: {self._user}, Pub: {self._policies}, Priv: {self._public_information}, Policy: {self._private_information}")
+            return Status.REPEATED
+
         self._user = message.user
         print(f"'{self.id}' Received setup message {message}")
 
@@ -183,6 +204,8 @@ class MyAgent(RoutedAgent):
             configuration_message, topic_id=TopicId("orchestrator_agent", "default")
         )
 
+        return Status.COMPLETED
+
 
     '''@message_handler
     async def handle_setup(self, message: SetupMessage, context: MessageContext) -> None:
@@ -199,8 +222,6 @@ class MyAgent(RoutedAgent):
         await self.publish_message(
             configuration_message, topic_id=TopicId("orchestrator_agent", "default")
         )'''
-
-
 
 
     @message_handler
@@ -235,8 +256,8 @@ class MyAgent(RoutedAgent):
         return await self.evaluate_connection(context, prompt, message.requester)
 
     @message_handler
-    async def handle_get_request(self, message : GetRequest, context: MessageContext) -> GetUserInformation:
-        answer = GetUserInformation(
+    async def handle_get_request(self, message : GetRequest, context: MessageContext) -> UserInformation:
+        answer = UserInformation(
             public_information={},
             private_information={},
             policies={}
@@ -256,3 +277,34 @@ class MyAgent(RoutedAgent):
         print("EXPECTED: ", answer)
 
         return answer
+
+    @message_handler
+    async def handle_action_request(self, message : ActionRequest, context: MessageContext) -> Status:
+        print("ACTION.")
+        operation = Status.FAILED
+
+        if ActionType(message.request_type) == ActionType.PAUSE_AGENT:
+            self._paused = True
+            operation = await self.notify_orchestrator(ActionType.PAUSE_AGENT)
+        elif ActionType(message.request_type) == ActionType.RESUME_AGENT:
+            self._paused = False
+            operation = await self.notify_orchestrator(ActionType.RESUME_AGENT)
+        elif ActionType(message.request_type) == ActionType.DELETE_AGENT:
+            self._paused = True
+            self._policies = None
+            self._public_information = None
+            self._private_information = None
+            operation = await self.notify_orchestrator(ActionType.DELETE_AGENT)
+            self._user = None
+            print("DELETED!")
+            print(f"Name: {self._user}, Pub: {self._policies}, Priv: {self._public_information}, Policy: {self._private_information}")
+
+        return operation
+
+    @message_handler
+    async def change_user_information(self, message : UserInformation, context : MessageContext) -> Status:
+        self._policies = message.policies
+        self._private_information = message.private_information
+        self._public_information = message.public_information
+
+        return Status.COMPLETED

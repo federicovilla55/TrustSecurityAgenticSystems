@@ -5,14 +5,14 @@ from typing import Dict, List, Optional, Tuple, Set, Any, Coroutine
 from autogen_core import AgentId, MessageContext, RoutedAgent, SingleThreadedAgentRuntime, message_handler, type_subscription, TopicId, DefaultTopicId
 from autogen_core.model_context import BufferedChatCompletionContext
 from autogen_core.models import ChatCompletionClient, SystemMessage, UserMessage
-
-from src import *
+from src.models import ConfigurationMessage, PairingRequest, PairingResponse, GetRequest, GetResponse, UserInformation, ActionRequest
+from src.enums import json_pair, AgentRelations, str_pair, RequestType, Relation, ActionType
 
 @type_subscription(topic_type="orchestrator_agent")
 class OrchestratorAgent(RoutedAgent):
-    def __init__(self, description : str, model_client: ChatCompletionClient):
-        super().__init__(description)
-        #print(f"Created an Orchestrator: '{self.id}'")
+    def __init__(self, model_client: ChatCompletionClient):
+        super().__init__("orchestrator_agent")
+        print(f"Created an Orchestrator: '{self.id}'")
 
         self._model_client = model_client
         self._registered_agents: Set[str] = set()

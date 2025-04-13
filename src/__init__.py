@@ -1,4 +1,5 @@
 from .enums import *
+from .fast_api import *
 from .models import (
     SetupMessage, ConfigurationMessage, PairingRequest,
     PairingResponse, GetRequest, GetResponse, UserInformation,
@@ -9,8 +10,6 @@ from .utils import (
     extract_section, remove_chain_of_thought, separate_categories
 )
 
-from .runtime import Runtime
-
-from .main import register_agents, get_model, register_my_agent, register_orchestrator
+from .runtime import Runtime, register_orchestrator, register_agents, register_my_agent, get_model
 
 from .client import Client

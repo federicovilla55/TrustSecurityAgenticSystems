@@ -1,8 +1,11 @@
-import httpx
-from autogen_core import SingleThreadedAgentRuntime, AgentId
-import os
+from typing import Optional
 
-from src import *
+from src.models.messages import InitMessage
+from src.runtime import Runtime
+from src.enums import Status, ActionType, AgentRelations, RequestType
+from src.models import SetupMessage, ActionRequest, UserInformation, GetRequest
+import httpx
+
 
 class Client:
     def __init__(self, username : str):
@@ -10,9 +13,15 @@ class Client:
         self._token : Optional[str] = None
         self._client: Optional[httpx.AsyncClient] = None
 
+        print(f"Client Initialized: {self._username}")
+
     async def __aenter__(self):
         self._client = httpx.AsyncClient()
         return self
+
+    async def init_agent(self):
+        print("INIT AGENT")
+        await Runtime.send_message(InitMessage(), "my_agent", self._username)
 
     async def setup_user(self, user_content: str) -> Status:
         return await Runtime.send_message(SetupMessage(content=user_content, user=self._username), "my_agent", self._username)
@@ -99,6 +108,22 @@ class Client:
         )
 
         return get_response.policies
+
+    async def get_information(self) -> dict:
+        get_response : UserInformation = (
+            await Runtime.send_message(
+                message=GetRequest(request_type=RequestType.GET_USER_INFORMATION.value, user=self._username),
+                agent_type="my_agent",
+                agent_key=self._username
+            )
+        )
+
+        return {
+            'policies' : get_response.policies,
+            'public_information' : get_response.public_information,
+            'private_information' : get_response.private_information,
+            'isSetup' : get_response.is_setup
+        }
     
     async def change_information(self, public_information : dict, private_information : dict, policies : dict) -> Status:
         return await Runtime.send_message(

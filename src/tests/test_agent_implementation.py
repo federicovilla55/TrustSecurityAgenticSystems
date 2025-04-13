@@ -3,12 +3,11 @@ import time
 import pytest
 # pytest is not defined in the project requirements
 
-from src import (
-    MyAgent, OrchestratorAgent, RequestType, Relation, AgentId,
-    GetRequest, SetupMessage, SingleThreadedAgentRuntime, ModelType,
-    register_agents, get_model,
-    Client, Runtime, register_my_agent, register_orchestrator
-)
+from src.agents import MyAgent, OrchestratorAgent
+from src.runtime import Runtime, get_model, register_orchestrator, register_my_agent
+from src.client import Client
+from src.models import *
+from src.enums import *
 
 """
 This test only verifies the correct implementation and creation of agents and tries

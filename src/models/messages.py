@@ -77,3 +77,10 @@ class UserInformation:
     public_information: dict
     private_information: dict
     policies: dict
+    is_setup : bool = True
+
+@dataclass
+class InitMessage:
+    """
+    Message sent to create a MyAgent
+    """

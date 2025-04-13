@@ -6,17 +6,13 @@ from autogen_core import AgentId, MessageContext, RoutedAgent, SingleThreadedAge
 from autogen_core.model_context import BufferedChatCompletionContext
 from autogen_core.models import ChatCompletionClient, SystemMessage, UserMessage
 
-from .. import PairingResponse
-from ..enums import *
-from ..models import (
-    ConfigurationMessage, PairingRequest, GetRequest, GetResponse
-)
+from src import *
 
 @type_subscription(topic_type="orchestrator_agent")
 class OrchestratorAgent(RoutedAgent):
     def __init__(self, description : str, model_client: ChatCompletionClient):
         super().__init__(description)
-        print(f"Created an Orchestrator: '{self.id}'")
+        #print(f"Created an Orchestrator: '{self.id}'")
 
         self._model_client = model_client
         self._registered_agents: Set[str] = set()
@@ -100,8 +96,6 @@ class OrchestratorAgent(RoutedAgent):
         # The sender sends its public information while the receiver checks this information using its policies and private information
         feedback = ""
 
-        print("CHECKING...")
-
         async with self._agents_lock:
             sender_information = self._agent_information[sender]
             receiver_information = self._agent_information[receiver]
@@ -155,7 +149,6 @@ class OrchestratorAgent(RoutedAgent):
 
     @message_handler
     async def agent_configuration(self, message: ConfigurationMessage, context: MessageContext) -> None:
-        print("HEY CONFIG")
         async with self._agents_lock:
             registered = (message.user in self._registered_agents or message.user in self._paused_agents)
 
@@ -181,11 +174,15 @@ class OrchestratorAgent(RoutedAgent):
             answer.registered_agents= await self.get_registered_agents()
         elif RequestType(message.request_type) == RequestType.GET_PERSONAL_RELATIONS:
             answer.agents_relation= await self.get_matches_for_agent(message.user)
-        elif RequestType(message.request_type) == RequestType.PAUSE_AGENT:
-            await self.pause_agent(message.user)
-        elif RequestType(message.request_type) == RequestType.RESUME_AGENT:
-            await self.resume_agent(message.user)
-        elif RequestType(message.request_type) == RequestType.DELETE_AGENT:
-            await self.delete_agent(message.user)
 
         return answer
+
+    @message_handler
+    async def action_request(self, message : ActionRequest, context: MessageContext) -> None:
+        if ActionType(message.request_type) == ActionType.PAUSE_AGENT:
+            await self.pause_agent(message.user)
+        elif ActionType(message.request_type) == ActionType.RESUME_AGENT:
+            await self.resume_agent(message.user)
+        elif ActionType(message.request_type) == ActionType.DELETE_AGENT:
+            await self.delete_agent(message.user)
+

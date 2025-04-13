@@ -46,7 +46,6 @@ def create_access_token(data: dict) -> str:
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def get_client(username : str) -> Client:
-    print(database)
     return database[username]['client']
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
@@ -84,14 +83,11 @@ async def register(registration_data_json : dict) -> dict:
             "hashed_password": pwd_context.hash(registration_data_json["password"]),
         }
 
-        print("REGISTERED, ", database)
-
     return {"status" : f"{registration_data_json['username']} is now registered."}
 
 
 @router.post("/token", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> dict:
-    print("LOGIN!")
     user = database.get(form_data.username)
     if user is None or not pwd_context.verify(form_data.password, user["hashed_password"]):
         raise HTTPException(
@@ -107,10 +103,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> dict:
 
 @router.post("/setup")
 async def setup_user(setup_json: dict, user_token_data: str = Depends(get_current_user)):
-    print(setup_json)
 
     if setup_json["user"] not in database:
-        print("NOT IN DB")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User not found"
@@ -129,13 +123,10 @@ async def setup_user(setup_json: dict, user_token_data: str = Depends(get_curren
     operation : Status = await client.setup_user(setup_json["content"])
 
     if operation != Status.COMPLETED:
-        print("NOT COMPLETED")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Setup failed"
         )
-
-    print("CFIN")
 
     return {"status": "setup_complete"}
 

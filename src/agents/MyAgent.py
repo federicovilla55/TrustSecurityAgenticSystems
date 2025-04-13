@@ -39,7 +39,7 @@ class MyAgent(RoutedAgent):
         self.paired_agents : Set[str] = set()
         self.refused_agents : Set[str] = set()
 
-        print(f"Created: {self._id}")
+        #print(f"Created: {self._id}")
 
     def get_public_information(self) -> str:
         return " ".join(item['content'] for item in self._public_information)
@@ -58,8 +58,8 @@ class MyAgent(RoutedAgent):
             cancellation_token=context.cancellation_token,
         )
 
-        print(f"{'*' * 20}\nPROMPT REQUEST: {[self._system_message, UserMessage(content=prompt, source=self._user),]}\n{'*' * 20}\n")
-        print(f"{'-' * 20}\n{self.id} ANSWER: {llm_answer.content}\n{'-' * 20}\n")
+        #print(f"{'*' * 20}\nPROMPT REQUEST: {[self._system_message, UserMessage(content=prompt, source=self._user),]}\n{'*' * 20}\n")
+        #print(f"{'-' * 20}\n{self.id} ANSWER: {llm_answer.content}\n{'-' * 20}\n")
 
         result = remove_chain_of_thought(llm_answer.content)
 
@@ -85,15 +85,12 @@ class MyAgent(RoutedAgent):
 
     @message_handler
     async def handle_setup(self, message: SetupMessage, context: MessageContext) -> Status:
-        print("HEY: ", (self._user is not None or self._policies is not None or
-                self._public_information is not None or self._private_information is not None))
         if (self._user is not None or self._policies is not None or
                 self._public_information is not None or self._private_information is not None):
-            print(f"Name: {self._user}, Pub: {self._policies}, Priv: {self._public_information}, Policy: {self._private_information}")
             return Status.REPEATED
 
         self._user = message.user
-        print(f"'{self.id}' Received setup message {message}")
+        #print(f"'{self.id}' Received setup message {message}")
 
         prompt_information = f"""
                     Extract ALL user policies from {self.id} message, following these rules:
@@ -130,8 +127,6 @@ class MyAgent(RoutedAgent):
 
         # TODO: add this
         # await self._model_context.add_message(message)
-
-        print("READY FOR LLM")
 
         llm_answer = await self._model_client.create(
             messages=[self._system_message, UserMessage(content=prompt_information, source=self._user)],
@@ -188,9 +183,9 @@ class MyAgent(RoutedAgent):
         print(f"Profiles: {self._profiles}")
         """
 
-        print(f"{'='*20}\n{self._user} POLICIES: {self._policies}")
+        '''print(f"{'='*20}\n{self._user} POLICIES: {self._policies}")
         print(f"{self._user} PUBLIC INFORMATION: {self._public_information}\n")
-        print(f"{self._user} PRIVATE INFORMATION: {self._private_information}\n{'=' * 20}\n")
+        print(f"{self._user} PRIVATE INFORMATION: {self._private_information}\n{'=' * 20}\n")'''
 
         configuration_message = ConfigurationMessage(
             user=self._user,
@@ -198,30 +193,11 @@ class MyAgent(RoutedAgent):
             user_information= self._public_information,
         )
 
-        print("PUBLISHING MESSAGE")
-
         await self.publish_message(
             configuration_message, topic_id=TopicId("orchestrator_agent", "default")
         )
 
         return Status.COMPLETED
-
-
-    '''@message_handler
-    async def handle_setup(self, message: SetupMessage, context: MessageContext) -> None:
-        self._user = message.user
-
-        configuration_message = ConfigurationMessage(
-            user=self._user,
-            user_policies={},
-            user_information= {},
-        )
-
-        print("PUBLISHING MESSAGE")
-
-        await self.publish_message(
-            configuration_message, topic_id=TopicId("orchestrator_agent", "default")
-        )'''
 
 
     @message_handler
@@ -274,13 +250,10 @@ class MyAgent(RoutedAgent):
             answer.private_information = self._private_information
             answer.policies = self._policies
 
-        print("EXPECTED: ", answer)
-
         return answer
 
     @message_handler
     async def handle_action_request(self, message : ActionRequest, context: MessageContext) -> Status:
-        print("ACTION.")
         operation = Status.FAILED
 
         if ActionType(message.request_type) == ActionType.PAUSE_AGENT:
@@ -296,8 +269,6 @@ class MyAgent(RoutedAgent):
             self._private_information = None
             operation = await self.notify_orchestrator(ActionType.DELETE_AGENT)
             self._user = None
-            print("DELETED!")
-            print(f"Name: {self._user}, Pub: {self._policies}, Priv: {self._public_information}, Policy: {self._private_information}")
 
         return operation
 

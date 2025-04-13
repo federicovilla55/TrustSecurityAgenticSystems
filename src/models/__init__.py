@@ -1,4 +1,5 @@
 from .messages import (
     SetupMessage, ConfigurationMessage, PairingRequest,
-    PairingResponse, GetRequest, GetResponse, UserInformation
+    PairingResponse, GetRequest, GetResponse, UserInformation,
+    ActionRequest
 )

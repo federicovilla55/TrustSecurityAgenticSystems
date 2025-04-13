@@ -73,7 +73,6 @@ class Client:
                 agent_key=self._username
             )
         )
-        print(get_response)
 
         return get_response.public_information
 
@@ -86,7 +85,6 @@ class Client:
                 agent_key=self._username
             )
         )
-        print(get_response)
 
         return get_response.private_information
     
@@ -99,7 +97,6 @@ class Client:
                 agent_key=self._username
             )
         )
-        print(get_response)
 
         return get_response.policies
     

@@ -24,32 +24,19 @@ class Runtime:
     def start_runtime(cls) -> None:
         instance = cls._get_instance()
         cls._shutdown_flag = False
-        print("START.")
         instance.start()
 
     @classmethod
-    async def stop_runtime_when_idle(cls) -> None:
+    async def stop_runtime(cls) -> None:
         cls._shutdown_flag = True
-        print("Starting Closure...")
 
         instance = cls._get_instance()
         await instance.stop_when_idle()
-        print("STOPPED.")
-
-    @classmethod
-    async def stop_forced(cls):
-        """Immediately cancel all tasks and shut down"""
-        cls._shutdown_flag = True
-        print("Forced shutdown initiated.")
-
-        await cls.close_runtime()
-        print("Runtime force stopped.")
 
     @classmethod
     async def close_runtime(cls) -> None:
         instance = cls._get_instance()
         await instance.close()
-        print("Runtime Closed")
 
     @classmethod
     async def register_orchestrator(cls, model_client: ChatCompletionClient):
@@ -79,7 +66,7 @@ class Runtime:
             raise RuntimeError("Runtime is shutting down")
         
         instance = cls._get_instance()
-        print(f"SENDING {message} TO: {AgentId(agent_type, agent_key)}")
+        #print(f"SENDING {message} TO: {AgentId(agent_type, agent_key)}")
         return await instance.send_message(message, AgentId(agent_type, agent_key))
 
     @classmethod

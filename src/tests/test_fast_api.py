@@ -41,7 +41,7 @@ async def register_runtime():
 async def cleanup_runtime():
     yield
     print("Cleaning up runtime")
-    await Runtime.stop_runtime_when_idle()
+    await Runtime.stop_runtime()
     await Runtime.close_runtime()
 
 

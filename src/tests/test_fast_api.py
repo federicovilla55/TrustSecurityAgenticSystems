@@ -3,7 +3,7 @@ import time
 
 import pytest
 from fastapi.testclient import TestClient
-from ..fast_api.sample_api import app, database, SECRET_KEY
+from ..fast_api.python_api import app, database, SECRET_KEY
 from src import Runtime, get_model, ModelType, register_agents, SetupMessage, Client, RequestType
 from jose import jwt
 from datetime import datetime, timedelta

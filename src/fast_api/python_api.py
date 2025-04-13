@@ -8,17 +8,17 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
-from uuid import UUID, uuid4
 import logging
 import asyncio
 import uvicorn
+import secrets
 
 from src import (
     Runtime, SetupMessage, ConfigurationMessage, PairingRequest,
     PairingResponse, GetRequest, RequestType, Client, Status
 )
 
-SECRET_KEY = os.getenv("SECRET_KEY") if os.getenv("SECRET_KEY") else "secret"
+SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
 ALGORITHM = "HS256"
 TOKEN_DURATION = timedelta(hours=1)
 

@@ -1,27 +1,29 @@
 import asyncio
 import json
+from asyncio import Task
 from typing import Dict, List, Optional, Tuple, Set, Any, Coroutine
-from autogen_core import AgentId, MessageContext, RoutedAgent, SingleThreadedAgentRuntime, message_handler, type_subscription, TopicId, DefaultTopicId
+from autogen_core import (AgentId, MessageContext, RoutedAgent, SingleThreadedAgentRuntime,
+                          message_handler, type_subscription, TopicId, DefaultTopicId)
 from autogen_core.model_context import BufferedChatCompletionContext
 from autogen_core.models import ChatCompletionClient, SystemMessage, UserMessage
 
-from .. import PairingResponse
-from ..enums import *
-from ..models import (
-    ConfigurationMessage, PairingRequest, GetRequest, GetResponse
-)
+from src import Status
+from src.models import (ConfigurationMessage, PairingRequest, PairingResponse, GetRequest,
+                        GetResponse, UserInformation, ActionRequest, FeedbackMessage)
+from src.enums import (json_pair, AgentRelations, AgentRelation_full,
+                       str_pair, RequestType, Relation, ActionType)
 
 @type_subscription(topic_type="orchestrator_agent")
 class OrchestratorAgent(RoutedAgent):
-    def __init__(self, description : str, model_client: ChatCompletionClient):
-        super().__init__(description)
+    def __init__(self, model_client: ChatCompletionClient):
+        super().__init__("orchestrator_agent")
         print(f"Created an Orchestrator: '{self.id}'")
 
         self._model_client = model_client
         self._registered_agents: Set[str] = set()
         self._paused_agents: Set[str] = set()
         self._agent_information: Dict[str, json_pair] = {}
-        self._matched_agents: AgentRelations = {}
+        self._matched_agents: AgentRelation_full = {}
         self._model_context_dict : Dict[str_pair, BufferedChatCompletionContext] = {}
         self._agents_lock = asyncio.Lock()
 
@@ -52,9 +54,19 @@ class OrchestratorAgent(RoutedAgent):
         async with self._agents_lock:
             return self._registered_agents.copy()
 
-    async def get_matched_agents(self) -> AgentRelations:
+    async def get_matched_agents(self, full : bool = False) -> AgentRelations | AgentRelation_full:
         async with self._agents_lock:
-            return self._matched_agents.copy()
+            agent_made_matches = self._matched_agents.copy()
+
+        if full:
+            return agent_made_matches
+
+        matches : AgentRelations = {}
+
+        for key, value in agent_made_matches.items():
+            matches[key] = value[0]
+
+        return matches
 
     async def get_matches_for_agent(self, agent_id: str) -> AgentRelations:
         matches_copy = await self.get_matched_agents()
@@ -66,6 +78,18 @@ class OrchestratorAgent(RoutedAgent):
                 matches_for_agent[agent_pair] = relation
 
         return matches_for_agent
+
+    async def get_agent_decision(self, sender : str, receiver : str) -> Relation:
+        async with self._agents_lock:
+            return self._matched_agents[sender, receiver][0]
+
+    async def get_human_decision(self, sender : str, receiver : str) -> Relation:
+        async with self._agents_lock:
+            return self._matched_agents[sender, receiver][1]
+
+    async def get_user_rules(self, sender: str, receiver: str) -> list:
+        async with self._agents_lock:
+            return self._matched_agents[sender, receiver][2]
 
     async def check_response(self, sender : str, receiver : str, sender_information : str, receiver_policies : str, reasoning : str) -> str:
         return "VALID"
@@ -106,7 +130,7 @@ class OrchestratorAgent(RoutedAgent):
         receiver_policies = json.dumps(receiver_information[1], indent=4, sort_keys=True)
         sender_public_information = json.dumps(sender_information[0], indent=4, sort_keys=True)
 
-        pair_response: PairingResponse = PairingResponse(Relation.UNCONTACTED, "")
+        pair_response: PairingResponse = PairingResponse(Relation.UNCONTACTED, [])
 
         self._model_context_dict[(sender, receiver)] = BufferedChatCompletionContext(buffer_size=5)
         for i in range(5):
@@ -126,14 +150,14 @@ class OrchestratorAgent(RoutedAgent):
                 feedback = f"Previous agent Reasoning: {pair_response.reasoning}\nFEEDBACK: {check_pairing.splitlines()[1:]}"
             elif 'VALID' in check_pairing.splitlines()[0]:
                 async with self._agents_lock:
-                    self._matched_agents[(sender, receiver)] = pair_response.answer
+                    self._matched_agents[(sender, receiver)] = (pair_response.answer, Relation.UNCONTACTED, [])
                 return
             else:
                 print(f"ERROR: Unknown answer when handling pairing request to {receiver} from {sender}...")
                 break
 
         async with self._agents_lock:
-            self._matched_agents[(sender, receiver)] = pair_response.answer
+            self._matched_agents[(sender, receiver)] = (pair_response.answer, Relation.UNCONTACTED, [])
 
     async def match_agents(self, user_to_add: str) -> None:
         registered_agents_copy = await self.get_registered_agents()
@@ -158,29 +182,48 @@ class OrchestratorAgent(RoutedAgent):
         if not registered and message.user == context.sender.key:
             for agent in self._registered_agents:
                 if self._matched_agents.get((agent, message.user)) is None:
-                    self._matched_agents[(agent, message.user)] = Relation.UNCONTACTED
-                    self._matched_agents[(message.user, agent)] = Relation.UNCONTACTED
+                    self._matched_agents[(agent, message.user)] = (Relation.UNCONTACTED, Relation.UNCONTACTED, [])
+                    self._matched_agents[(message.user, agent)] = (Relation.UNCONTACTED, Relation.UNCONTACTED, [])
 
             self._registered_agents.add(message.user)
             self._agent_information[message.user] = (message.user_information, message.user_policies)
 
             # in a more complex application maybe this could be scheduled as a background task: `asyncio.create_task`
             await self.match_agents(message.user)
+            #return asyncio.create_task(self.match_agents(message.user))
 
     @message_handler
     async def get_request(self, message: GetRequest, context: MessageContext) -> GetResponse:
         answer = GetResponse(request_type=message.request_type)
         if RequestType(message.request_type) == RequestType.GET_AGENT_RELATIONS:
-            answer.agents_relation= await self.get_matched_agents()
+            answer.agents_relation = await self.get_matched_agents()
+        elif RequestType(message.request_type) == RequestType.GET_AGENT_RELATIONS_FULL:
+            answer.agents_relation_full = await self.get_matched_agents(full=True)
         elif RequestType(message.request_type) == RequestType.GET_REGISTERED_AGENTS:
             answer.registered_agents= await self.get_registered_agents()
         elif RequestType(message.request_type) == RequestType.GET_PERSONAL_RELATIONS:
             answer.agents_relation= await self.get_matches_for_agent(message.user)
-        elif RequestType(message.request_type) == RequestType.PAUSE_AGENT:
-            await self.pause_agent(message.user)
-        elif RequestType(message.request_type) == RequestType.RESUME_AGENT:
-            await self.resume_agent(message.user)
-        elif RequestType(message.request_type) == RequestType.DELETE_AGENT:
-            await self.delete_agent(message.user)
 
         return answer
+
+    @message_handler
+    async def action_request(self, message : ActionRequest, context: MessageContext) -> None:
+        if ActionType(message.request_type) == ActionType.PAUSE_AGENT:
+            await self.pause_agent(message.user)
+        elif ActionType(message.request_type) == ActionType.RESUME_AGENT:
+            await self.resume_agent(message.user)
+        elif ActionType(message.request_type) == ActionType.DELETE_AGENT:
+            await self.delete_agent(message.user)
+
+    @message_handler
+    async def human_in_the_loop(self, message : FeedbackMessage, context : MessageContext) -> Status:
+        print("FEEDBACK RECEIVED!")
+        async with self._agents_lock:
+            if self._matched_agents.get((message.sender, message.receiver)) is None:
+                return Status.FAILED
+
+            triplet = self._matched_agents[(message.sender, message.receiver)]
+
+            self._matched_agents[(message.sender, message.receiver)] = (triplet[0], Relation(message.feedback), triplet[2])
+
+        return Status.COMPLETED

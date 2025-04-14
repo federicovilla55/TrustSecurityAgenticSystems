@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Optional, Set
-from ..enums import (Relation, RequestType, AgentRelations)
+
+from .. import ActionType
+from ..enums import (Relation, RequestType, AgentRelations, AgentRelation_full)
 
 
 @dataclass
@@ -50,11 +52,45 @@ class GetRequest:
     user: str = ""
 
 @dataclass
+class ActionRequest:
+    """
+    Request to get information from the orchestrator's data
+    """
+    request_type: ActionType
+    user: str = ""
+
+@dataclass
 class GetResponse:
     """
     Answer to the orchestrator get request
     """
     request_type: RequestType
     agents_relation: AgentRelations = None
+    agents_relation_full: AgentRelation_full = None
     registered_agents: Set[str] = None
     # more types should be added when the orchestrator will contain more information
+
+@dataclass
+class UserInformation:
+    """
+    Message sent by the MyAgent, the personal agent, to the user
+    """
+    public_information: dict
+    private_information: dict
+    policies: dict
+    is_setup : bool = True
+
+@dataclass
+class InitMessage:
+    """
+    Message sent to create a MyAgent
+    """
+
+@dataclass
+class FeedbackMessage:
+    """
+    Message sent by a user to the orchestrator containing the feedback on an evaluated connection.
+    """
+    sender : str
+    receiver : str
+    feedback: Relation

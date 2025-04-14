@@ -15,6 +15,7 @@ class RequestType(Enum):
     GET_PRIVATE_INFORMATION = 5
     GET_POLICIES = 6
     GET_USER_INFORMATION = 7
+    GET_AGENT_RELATIONS_FULL = 8
 
 class ActionType(Enum):
     PAUSE_AGENT = 1

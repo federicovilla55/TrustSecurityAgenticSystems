@@ -2,8 +2,8 @@ from typing import Optional
 
 from src.models.messages import InitMessage
 from src.runtime import Runtime
-from src.enums import Status, ActionType, AgentRelations, RequestType
-from src.models import SetupMessage, ActionRequest, UserInformation, GetRequest
+from src.enums import Status, ActionType, AgentRelations, RequestType, Relation
+from src.models import SetupMessage, ActionRequest, UserInformation, GetRequest, FeedbackMessage
 import httpx
 
 
@@ -136,9 +136,22 @@ class Client:
             agent_key=self._username
         )
 
-    async def send_feedback(self, relation_id : str, feedback : bool):
-        # give feedback in one of the multiple types of agent relation
-        print()
+    async def send_feedback(self, receiver : str, accepted : bool) -> Status:
+        if accepted:
+            feedback = Relation.USER_ACCEPTED
+        else:
+            feedback = Relation.USER_REFUSED
+
+        sender = self._username
+
+        return await Runtime.send_message(
+            message=FeedbackMessage(
+                sender=sender,
+                receiver=receiver,
+                feedback=feedback.value,
+            ),
+            agent_type="orchestrator_agent",
+        )
 
     async def save_configuration(self):
         pass

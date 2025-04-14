@@ -384,3 +384,83 @@ async def test_unchanged_setup_repeated(test_client, register_runtime, cleanup_r
             headers={"Authorization": f"Bearer {token}"}
         )
         assert response.status_code == 200
+
+@pytest.mark.asyncio
+async def test_relations_human_feedback(test_client, register_runtime, cleanup_runtime):
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/api/register",
+             json={
+                 "username": "testuser",
+                 "password": "secret"
+         })
+        assert response.status_code == 200
+        auth_response = await client.post("/api/token", data={
+            "username": "testuser",
+            "password": "secret"
+        })
+        assert auth_response.status_code == 200
+        token = auth_response.json()["access_token"]
+
+        setup_response = await client.post("/api/setup",
+            json={
+                "user": "testuser",
+                "content": "I am Alice, an ETH student. I study computer science and I want to connect to other students from ETH or workers from Big tech companies.",
+            },
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        assert setup_response.status_code == 200
+
+        new_public_information = {"public_info_1" : "test"}
+        new_private_information = {"private_info_1" : "test"}
+        new_policies = {"policy1" : "test"}
+
+        change_response = await client.post(
+            "api/change_information",
+            json={
+                "user": "testuser",
+                "public_information" : new_public_information,
+                "private_information" : new_private_information,
+                "policies" : new_policies,
+            },
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        assert change_response.status_code == 200
+
+        get_endpoint = "/api/get_information"
+        response = await client.post(get_endpoint,
+             json={
+                 "type": RequestType.GET_USER_INFORMATION.value,
+             },
+             headers={"Authorization": f"Bearer {token}"}
+        )
+
+        assert response.status_code == 200
+        assert 'public_information' in response.json().keys()
+        assert response.json()['public_information'] == new_public_information
+        assert 'policies' in response.json().keys()
+        assert response.json()['policies'] == new_policies
+        assert 'private_information' in response.json().keys()
+        assert response.json()['private_information'] == new_private_information
+
+        response = await client.get(
+            "/api/relations",
+             headers={"Authorization": f"Bearer {token}"}
+         )
+
+        assert response.status_code == 200
+        assert 'relations' in response.json().keys()
+
+        response = await client.post("/api/feedback",
+             json={
+                 "receiver": 'Bob',
+                 'feedback': True,
+             },
+             headers={"Authorization": f"Bearer {token}"}
+        )
+        assert response.status_code == 200
+
+        response = await client.post(
+            "/api/delete",
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        assert response.status_code == 200

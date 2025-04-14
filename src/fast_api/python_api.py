@@ -298,6 +298,16 @@ async def get_information(information : dict, current_user: str = Depends(get_cu
 
     return response
 
+@router.post("/feedback")
+async def send_feedback(data : dict, current_user: str = Depends(get_current_user)):
+    client = await get_client(current_user)
+
+    await client.send_feedback(data['receiver'], data['feedback'])
+
+    return {"status" : "feedback sent"}
+
+
+
 app.include_router(router)
 
 

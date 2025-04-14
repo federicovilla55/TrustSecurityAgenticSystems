@@ -42,6 +42,11 @@ async def test_agent_implementation():
     relations = await Runtime.send_message(GetRequest(request_type=RequestType.GET_AGENT_RELATIONS.value), agent_type="orchestrator_agent")
     registered_agents = await Runtime.send_message(GetRequest(request_type=RequestType.GET_REGISTERED_AGENTS.value), agent_type="orchestrator_agent")
 
+    await alice.send_feedback('Bob', True)
+    await bob.send_feedback( 'Alice', False)
+
+    relations_full = await Runtime.send_message(GetRequest(request_type=RequestType.GET_AGENT_RELATIONS_FULL.value), agent_type="orchestrator_agent")
+
     await Runtime.stop_runtime()
 
     await model_client_my_agent.close()
@@ -83,7 +88,9 @@ async def test_agent_implementation():
                 connections.append(b)
         print(f"- {agent} : {', '.join(connections)}")
 
-        
-    
+    print(relations_full.agents_relation_full)
+
+    assert(relations_full.agents_relation_full['Alice', 'Bob'][1] == Relation.USER_ACCEPTED)
+    assert(relations_full.agents_relation_full['Bob', 'Alice'][1] == Relation.USER_REFUSED)
 
 

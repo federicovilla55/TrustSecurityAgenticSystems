@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, FormEvent } from 'react';
+import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
 export default function AuthPage() {
   const router = useRouter();
-  // Toggle between login or register mode
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  // Toggle between auth (login) or register mode
+  const [mode, setMode] = useState<'auth' | 'register'>('auth');
 
   // Form fields
   const [username, setUsername] = useState('');
@@ -15,9 +16,9 @@ export default function AuthPage() {
   // For user feedback (success/error messages)
   const [message, setMessage] = useState('');
 
-  // Toggle the mode between "login" and "register"
+  // Toggle the mode between "auth" (login) and "register"
   function toggleMode() {
-    setMode(prev => (prev === 'login' ? 'register' : 'login'));
+    setMode(prev => (prev === 'auth' ? 'register' : 'auth'));
     setMessage('');
   }
 
@@ -39,38 +40,52 @@ export default function AuthPage() {
           // If 400 or some error, show message
           setMessage(data.detail || 'Registration failed.');
         } else {
-          // 200 => success
+          // Registration success
           setMessage(data.status || 'Registration successful!');
+
+          // 2) Auto-login (like the tests do)
+          const formData = new URLSearchParams();
+          formData.append('username', username);
+          formData.append('password', password);
+
+          const result = await signIn('credentials', {
+            redirect: false,
+            username,
+            password,
+          });
+
+          if (result?.error) {
+            setMessage(result.error);
+          } else {
+            router.push('/dashboard');
+          }
         }
       } catch (error) {
         console.error('Error during registration:', error);
         setMessage('Registration request failed.');
       }
     } else {
-      // mode === 'login'
-      // 2) Call FastAPI /api/token with form data
+      // mode === 'auth' (login)
       try {
+        // POST /api/token with form data
         const formData = new URLSearchParams();
         formData.append('username', username);
         formData.append('password', password);
 
-        const res = await fetch('http://localhost:8000/api/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: formData.toString(),
+        const result = await signIn('credentials', {
+          redirect: false,
+          username,
+          password,
         });
-        const data = await res.json();
 
-        if (!res.ok) {
-          // If 401 or some error, show message
-          setMessage(data.detail || 'Login failed.');
+        if (result?.error) {
+          setMessage(result.error);
         } else {
-          // Successful => store token, redirect to /dashboard
-          localStorage.setItem('access_token', data.access_token);
           router.push('/dashboard');
         }
+
       } catch (error) {
-        console.error('Error during login:', error);
+        console.error('Error during auth:', error);
         setMessage('Login request failed.');
       }
     }
@@ -80,7 +95,7 @@ export default function AuthPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-200 p-4">
       <div className="max-w-md w-full bg-white p-6 rounded shadow">
         <h1 className="text-2xl font-bold mb-4 text-center">
-          {mode === 'login' ? 'Login' : 'Register'}
+          {mode === 'auth' ? 'Login' : 'Register'}
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -109,16 +124,16 @@ export default function AuthPage() {
             type="submit"
             className="bg-indigo-600 text-white w-full py-2 rounded hover:bg-indigo-700 transition"
           >
-            {mode === 'login' ? 'Login' : 'Register'}
+            {mode === 'auth' ? 'Login' : 'Register'}
           </button>
         </form>
 
         <p className="mt-4 text-center">
-          {mode === 'login'
+          {mode === 'auth'
             ? "Don't have an account?"
             : 'Already have an account?'}{' '}
           <button onClick={toggleMode} className="text-indigo-600 underline">
-            {mode === 'login' ? 'Register' : 'Login'}
+            {mode === 'auth' ? 'Register' : 'Login'}
           </button>
         </p>
 

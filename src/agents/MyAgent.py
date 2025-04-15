@@ -1,8 +1,12 @@
+import json
 from typing import Dict, List, Optional, Tuple, Set, Any, Coroutine
 from autogen_core import AgentId, MessageContext, RoutedAgent, message_handler, type_subscription, TopicId, DefaultTopicId
 from autogen_core.model_context import BufferedChatCompletionContext
 from autogen_core.models import ChatCompletionClient, SystemMessage, UserMessage
 import asyncio
+import logging
+
+from src.database import get_database, get_user
 
 from src.enums import  Status, ActionType, Relation, RequestType
 
@@ -242,6 +246,23 @@ class MyAgent(RoutedAgent):
             user_policies=self._policies,
             user_information= self._public_information,
         )
+
+        db = get_database()
+        cursor = db.cursor()
+        cursor.execute(
+            """UPDATE user_data 
+            SET public_information = ?,
+                private_information = ?,
+                policies = ?
+            WHERE username = ?""",
+            (
+                json.dumps(self._public_information),
+                json.dumps(self._private_information),
+                json.dumps(self._policies),
+                self._user,
+            )
+        )
+        db.commit()
 
         await self.publish_message(
             configuration_message, topic_id=TopicId("orchestrator_agent", "default")

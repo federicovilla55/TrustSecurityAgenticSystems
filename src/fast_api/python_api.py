@@ -7,6 +7,7 @@ from fastapi import FastAPI, APIRouter, Depends, HTTPException, status, Backgrou
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from passlib.context import CryptContext
+from pipenv.patched.safety.safety import fetch_database
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timedelta
@@ -15,18 +16,25 @@ import logging
 import asyncio
 import uvicorn
 import secrets
+import json
 
+from aiosqlite import connect
 from src.client import Client
 from src.models.messages import RequestType
 from src.enums.enums import Status, ModelType
 from src.runtime import Runtime, get_model, register_my_agent, register_orchestrator
+from src.database import DATABASE_PATH, get_user, create_user, get_database, init_database
 
 SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
 ALGORITHM = "HS256"
 TOKEN_DURATION = timedelta(hours=1)
 
+clients = {}
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    init_database()
+
     # Initialize your resources and perform your startup tasks:
     model_name = "meta-llama/Llama-3.3-70B-Instruct"
     model_client_my_agent = get_model(
@@ -71,9 +79,6 @@ router = APIRouter(prefix="/api")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# To Do: Use a real database
-database = {}
-
 lock = asyncio.Lock()
 
 class Token(BaseModel):
@@ -94,10 +99,12 @@ def create_access_token(data: dict) -> str:
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 async def get_client(username : str) -> Client | None:
+    # To Do: load clients from database.
     async with lock:
-        if username in database:
-            return database[username]['client']
+        if username in clients:
+            return clients[username]
         else:
+            print("USER NOT FOUND!")
             return None
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
@@ -108,6 +115,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        print(payload)
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
@@ -115,9 +123,13 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
     except JWTError:
         raise credentials_exception
 
-    async with lock:
-        if username not in database:
-            raise credentials_exception
+    db = get_database()
+    user = get_user(db, username)
+
+    if not user:
+        print(f"USER {username} NOT FOUND IN DB!")
+        raise credentials_exception
+
 
     return username
 
@@ -127,33 +139,32 @@ async def read_root():
 
 @router.post("/register")
 async def register(registration_data_json : dict) -> dict:
-    print(" RICEVUTO RICHIESTA")
+    db = get_database()
+    existing_user = get_user(db, registration_data_json["username"])
+
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Username already registered",
+        )
+
+    create_user(
+        db,
+        registration_data_json["username"],
+        pwd_context.hash(registration_data_json["password"])
+    )
+
     async with lock:
-        if registration_data_json["username"] in database:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Username already registered",
-            )
-
-
-        database[registration_data_json["username"]] = {
-            "username": registration_data_json["username"],
-            "hashed_password": pwd_context.hash(registration_data_json["password"]),
-        }
-
-        client = Client(registration_data_json["username"])
-
-        #await client.init_agent()
-
-        database[registration_data_json["username"]]['client'] = client
+        clients[registration_data_json["username"]] = Client(registration_data_json["username"])
 
     return {"status" : f"{registration_data_json['username']} is now registered."}
 
 
 @router.post("/token", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> dict:
-    user = database.get(form_data.username)
-    if user is None or not pwd_context.verify(form_data.password, user["hashed_password"]):
+    db = get_database()
+    user = get_user(db, form_data.username)
+    if user is None or not pwd_context.verify(form_data.password, user[1]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Credentials",
@@ -161,26 +172,24 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> dict:
         )
 
     return {
-        "access_token": create_access_token(data={"sub": user["username"]}),
+        "access_token": create_access_token(data={"sub": user[0]}),
         "token_type": "bearer"
     }
 
 @router.post("/setup")
 async def setup_user(setup_json: dict, user_token_data: str = Depends(get_current_user)):
-
-    if setup_json["user"] not in database:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User not found"
-        )
-
+    print("RHE")
     if setup_json["user"] != user_token_data:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cannot setup another user"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username",
         )
 
+    print("HRE")
+
     client = await get_client(setup_json["user"])
+
+    clients[setup_json["user"]] = client
 
     operation : Status = await client.setup_user(setup_json["content"])
 
@@ -194,8 +203,11 @@ async def setup_user(setup_json: dict, user_token_data: str = Depends(get_curren
 
 @router.post("/change_information")
 async def change_information(information_json: dict, user_token_data: str = Depends(get_current_user)):
-    if information_json["user"] not in database or "public_information" not in information_json.keys() \
-            or "private_information" not in information_json.keys() or "policies" not in information_json.keys():
+    db = get_database()
+    user = get_user(db, information_json["user"])
+
+    if ("public_information" not in information_json.keys() or "private_information" not in information_json.keys()
+            or "policies" not in information_json.keys()) or not user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User not found"
@@ -216,6 +228,24 @@ async def change_information(information_json: dict, user_token_data: str = Depe
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Operation failed"
         )
+
+    db = get_database()
+    cursor = db.cursor()
+    cursor.execute(
+        """UPDATE user_data 
+        SET public_information = ?,
+            private_information = ?,
+            policies = ?
+        WHERE username = ?""",
+        (
+            json.dumps(information_json["public_information"]),
+            json.dumps(information_json["private_information"]),
+            json.dumps(information_json["policies"]),
+            user_token_data
+        )
+    )
+    db.commit()
+
 
     return {"status": "Information updated."}
 

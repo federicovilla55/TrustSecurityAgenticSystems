@@ -7,7 +7,7 @@ from fastapi import FastAPI, APIRouter, Depends, HTTPException, status, Backgrou
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from passlib.context import CryptContext
-from pipenv.patched.safety.safety import fetch_database
+
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timedelta
@@ -119,7 +119,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
-        token_data = TokenData(username=username)
     except JWTError:
         raise credentials_exception
 
@@ -127,7 +126,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
     user = get_user(db, username)
 
     if not user:
-        print(f"USER {username} NOT FOUND IN DB!")
         raise credentials_exception
 
 
@@ -178,14 +176,11 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> dict:
 
 @router.post("/setup")
 async def setup_user(setup_json: dict, user_token_data: str = Depends(get_current_user)):
-    print("RHE")
     if setup_json["user"] != user_token_data:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username",
         )
-
-    print("HRE")
 
     client = await get_client(setup_json["user"])
 

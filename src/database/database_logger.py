@@ -1,7 +1,10 @@
 import sqlite3
 import logging
+from enum import Enum
 from pathlib import Path
-from dataclasses import asdict
+from dataclasses import asdict, is_dataclass
+from datetime import datetime
+import json
 
 DATABASE_PATH = Path('database.db')
 
@@ -46,6 +49,7 @@ def init_database():
         CREATE TABLE IF NOT EXISTS events_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             event_type TEXT,
+            agent TEXT,
             timestamp TEXT,
             data JSON
         )
@@ -99,6 +103,10 @@ def clear_database() -> None:
         cursor.execute("DELETE FROM users;")
         cursor.execute("DELETE FROM user_data;")
 
+        cursor.execute("DROP TABLE IF EXISTS events_log;")
+        cursor.execute("DROP TABLE IF EXISTS users;")
+        cursor.execute("DROP TABLE IF EXISTS user_data;")
+
         db.commit()
     except Exception as e:
         print(f"Error clearing users database: {e}")
@@ -123,3 +131,37 @@ def get_user(db, username: str):
         (username,)
     )
     return cursor.fetchone()
+
+async def log_event(event_type: str, source: str, data: object):
+    """Log structured events to the database"""
+    db = get_database()
+
+    def serialize(obj):
+        if isinstance(obj, Enum):
+            return obj.value
+        if is_dataclass(obj):
+            return serialize(asdict(obj))
+        if isinstance(obj, (list, tuple)):
+            return [serialize(item) for item in obj]
+        if isinstance(obj, dict):
+            return {k: serialize(v) for k, v in obj.items()}
+        if hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        return str(obj)
+
+    try:
+
+        db.execute(
+            """INSERT INTO events_log 
+            (event_type, agent, timestamp, data)
+            VALUES (?, ?, ?, ?)""",
+            (
+                event_type,
+                source,
+                datetime.now().isoformat(),
+                json.dumps(serialize(data), indent=2)
+            )
+        )
+        db.commit()
+    finally:
+        db.close()

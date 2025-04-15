@@ -6,7 +6,7 @@ from autogen_core.models import ChatCompletionClient, SystemMessage, UserMessage
 import asyncio
 import logging
 
-from src.database import get_database, get_user
+from src.database import get_database, get_user, log_event
 
 from src.enums import  Status, ActionType, Relation, RequestType
 
@@ -118,7 +118,7 @@ class MyAgent(RoutedAgent):
     async def handle_setup(self, message: SetupMessage, context: MessageContext) -> Status:
         if self.is_setup():
             return Status.REPEATED
-        print("HERE")
+        print("Handling Setup")
 
 
         username = message.user
@@ -264,6 +264,17 @@ class MyAgent(RoutedAgent):
         )
         db.commit()
 
+        await log_event(
+            event_type="agent_configuration",
+            source=self._user,
+            data=UserInformation(
+                username=self._user,
+                public_information=self._public_information,
+                policies=self._policies,
+                private_information=self._private_information,
+            )
+        )
+
         await self.publish_message(
             configuration_message, topic_id=TopicId("orchestrator_agent", "default")
         )
@@ -281,6 +292,9 @@ class MyAgent(RoutedAgent):
         #print(f"'{self.id}' Received pairing request from '{message.user}'")
         if not self.is_setup() or self.is_paused():
             return PairingResponse(Relation.UNCONTACTED.value, "MyAgent is paused or its setup is incomplete.")
+
+        if message.receiver != "" and message.receiver != self._user:
+            return PairingResponse(Relation.UNCONTACTED, "MyAgent is not the correct receiver fot the message")
 
         if message.requester not in self._model_context_dict.keys():
             self._model_context_dict[message.requester] = BufferedChatCompletionContext(buffer_size=6)
@@ -303,7 +317,9 @@ class MyAgent(RoutedAgent):
         if message.feedback != "":
             await self._model_context_dict[message.requester].add_message(UserMessage(content=message.feedback, source="OrchestratorAgent"))
 
-        return await self.evaluate_connection(context, prompt, message.requester)
+        response = await self.evaluate_connection(context, prompt, message.requester)
+
+        return response
 
     @message_handler
     async def handle_get_request(self, message : GetRequest, context: MessageContext) -> UserInformation:
@@ -316,7 +332,8 @@ class MyAgent(RoutedAgent):
         answer = UserInformation(
             public_information={},
             private_information={},
-            policies={}
+            policies={},
+            username=""
         )
 
         if not self.is_setup():
@@ -346,19 +363,20 @@ class MyAgent(RoutedAgent):
         """
         operation = Status.FAILED
 
-        if ActionType(message.request_type) == ActionType.PAUSE_AGENT:
-            self._paused = True
-            operation = await self.notify_orchestrator(ActionType.PAUSE_AGENT)
-        elif ActionType(message.request_type) == ActionType.RESUME_AGENT:
-            self._paused = False
-            operation = await self.notify_orchestrator(ActionType.RESUME_AGENT)
-        elif ActionType(message.request_type) == ActionType.DELETE_AGENT:
-            self._paused = True
-            self._policies = None
-            self._public_information = None
-            self._private_information = None
-            operation = await self.notify_orchestrator(ActionType.DELETE_AGENT)
-            self._user = None
+        if self.is_setup() or True:
+            if ActionType(message.request_type) == ActionType.PAUSE_AGENT:
+                self._paused = True
+                operation = await self.notify_orchestrator(ActionType.PAUSE_AGENT)
+            elif ActionType(message.request_type) == ActionType.RESUME_AGENT:
+                self._paused = False
+                operation = await self.notify_orchestrator(ActionType.RESUME_AGENT)
+            elif ActionType(message.request_type) == ActionType.DELETE_AGENT:
+                self._paused = True
+                self._policies = None
+                self._public_information = None
+                self._private_information = None
+                operation = await self.notify_orchestrator(ActionType.DELETE_AGENT)
+                self._user = None
 
         return operation
 
@@ -373,5 +391,17 @@ class MyAgent(RoutedAgent):
         self._policies = message.policies
         self._private_information = message.private_information
         self._public_information = message.public_information
+
+        await log_event(
+            event_type="change_agent_information",
+            source=self._user,
+            data=UserInformation(
+                username=self._user,
+                public_information=self._public_information,
+                policies=self._policies,
+                private_information=self._private_information,
+            )
+        )
+
 
         return Status.COMPLETED

@@ -7,7 +7,8 @@ from autogen_core import (AgentId, MessageContext, RoutedAgent, SingleThreadedAg
 from autogen_core.model_context import BufferedChatCompletionContext
 from autogen_core.models import ChatCompletionClient, SystemMessage, UserMessage
 
-from src import Status
+from src.enums import Status
+from src.database import log_event
 from src.models import (ConfigurationMessage, PairingRequest, PairingResponse, GetRequest,
                         GetResponse, UserInformation, ActionRequest, FeedbackMessage)
 from src.enums import (json_pair, AgentRelations, AgentRelation_full,
@@ -92,8 +93,6 @@ class OrchestratorAgent(RoutedAgent):
             return self._matched_agents[sender, receiver][2]
 
     async def check_response(self, sender : str, receiver : str, sender_information : str, receiver_policies : str, reasoning : str) -> str:
-        return "VALID"
-
         prompt = f"""
                 You are the Policy Enforcement Orchestrator. Your job is to evaluate the reasoning {receiver} made on the policies.
                 The received reasoning includes a series of policies ID and a status regarding whether the policy was UNUSED, used with private information or
@@ -130,31 +129,55 @@ class OrchestratorAgent(RoutedAgent):
         receiver_policies = json.dumps(receiver_information[1], indent=4, sort_keys=True)
         sender_public_information = json.dumps(sender_information[0], indent=4, sort_keys=True)
 
-        pair_response: PairingResponse = PairingResponse(Relation.UNCONTACTED, [])
-
         self._model_context_dict[(sender, receiver)] = BufferedChatCompletionContext(buffer_size=5)
-        for i in range(5):
-            pair_response: PairingResponse = await self.send_message(
-                PairingRequest(
-                    requester=sender, requester_information=sender_public_information,
-                    feedback=feedback
-                ),
-                AgentId("my_agent", receiver)
+
+        pair_response: PairingResponse = await self.send_message(
+            PairingRequest(
+                requester=sender, requester_information=sender_public_information,
+                feedback=feedback, receiver=receiver
+            ),
+            AgentId("my_agent", receiver)
+        )
+        await self._model_context_dict[(sender, receiver)].add_message(UserMessage(content=pair_response.reasoning, source=sender))
+
+        # To Do: determine if the orchestrator should check the model answers.
+        check_pairing = 'VALID'
+        '''check_pairing = await self.check_response(
+            sender, receiver, sender_public_information,
+            receiver_policies, pair_response.reasoning
+        )'''
+
+        await log_event(
+            event_type="pairing_request",
+            source=sender,
+            data=PairingRequest(
+                requester=sender,
+                requester_information=sender_public_information,
+                feedback=feedback,
+                receiver=receiver
             )
-            await self._model_context_dict[(sender, receiver)].add_message(UserMessage(content=pair_response.reasoning, source=sender))
-            check_pairing = await self.check_response(
-                sender, receiver, sender_public_information,
-                receiver_policies, pair_response.reasoning
-            )
-            if 'INVALID' in check_pairing.splitlines()[0]:
-                feedback = f"Previous agent Reasoning: {pair_response.reasoning}\nFEEDBACK: {check_pairing.splitlines()[1:]}"
-            elif 'VALID' in check_pairing.splitlines()[0]:
-                async with self._agents_lock:
-                    self._matched_agents[(sender, receiver)] = (pair_response.answer, Relation.UNCONTACTED, [])
-                return
-            else:
-                print(f"ERROR: Unknown answer when handling pairing request to {receiver} from {sender}...")
-                break
+        )
+
+        await log_event(
+            event_type="pairing_decision",
+            source=receiver,
+            data={
+                "requester": sender,
+                "receiver" : receiver,
+                "decision": pair_response.answer.value,
+                "reasoning": pair_response.reasoning[:500]
+            }
+        )
+
+        if 'INVALID' in check_pairing.splitlines()[0]:
+            feedback = f"Previous agent Reasoning: {pair_response.reasoning}\nFEEDBACK: {check_pairing.splitlines()[1:]}"
+        elif 'VALID' in check_pairing.splitlines()[0]:
+            async with self._agents_lock:
+                self._matched_agents[(sender, receiver)] = (pair_response.answer, Relation.UNCONTACTED, [])
+            return
+        else:
+            print(f"ERROR: Unknown answer when handling pairing request to {receiver} from {sender}...")
+            return
 
         async with self._agents_lock:
             self._matched_agents[(sender, receiver)] = (pair_response.answer, Relation.UNCONTACTED, [])
@@ -192,6 +215,15 @@ class OrchestratorAgent(RoutedAgent):
             await self.match_agents(message.user)
             #return asyncio.create_task(self.match_agents(message.user))
 
+        await log_event(
+            event_type="agent_configuration",
+            source=message.user,
+            data={
+                "public_information" : message.user_information,
+                "policies" : message.user_policies
+            }
+        )
+
     @message_handler
     async def get_request(self, message: GetRequest, context: MessageContext) -> GetResponse:
         answer = GetResponse(request_type=message.request_type)
@@ -215,6 +247,14 @@ class OrchestratorAgent(RoutedAgent):
         elif ActionType(message.request_type) == ActionType.DELETE_AGENT:
             await self.delete_agent(message.user)
 
+        await log_event(
+            event_type="agent_status_change",
+            source=message.user,
+            data=ActionRequest(
+                request_type=message.request_type,
+            )
+        )
+
     @message_handler
     async def human_in_the_loop(self, message : FeedbackMessage, context : MessageContext) -> Status:
         print("FEEDBACK RECEIVED!")
@@ -226,4 +266,9 @@ class OrchestratorAgent(RoutedAgent):
 
             self._matched_agents[(message.sender, message.receiver)] = (triplet[0], Relation(message.feedback), triplet[2])
 
+        await log_event(
+            event_type="human_feedback",
+            source=message.sender,
+            data=message
+        )
         return Status.COMPLETED

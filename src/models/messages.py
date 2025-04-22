@@ -32,6 +32,7 @@ class PairingRequest:
     requester: str
     requester_information: str
     feedback: str = ""
+    receiver : str = ""
 
 @dataclass
 class PairingResponse:
@@ -78,6 +79,7 @@ class UserInformation:
     public_information: dict
     private_information: dict
     policies: dict
+    username : str
     is_setup : bool = True
 
 @dataclass

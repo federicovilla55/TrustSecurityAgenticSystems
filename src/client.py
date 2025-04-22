@@ -131,6 +131,7 @@ class Client:
                 public_information=public_information,
                 private_information=private_information,
                 policies=policies,
+                username=self._username
             ),
             agent_type="my_agent",
             agent_key=self._username

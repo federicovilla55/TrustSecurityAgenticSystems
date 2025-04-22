@@ -1,17 +1,13 @@
-// middleware.ts (App Router style)
+// middleware.ts
 import { withAuth } from 'next-auth/middleware';
 
+// This ensures only authenticated users can visit /dashboard or /settings
 export default withAuth({
   pages: {
-    signIn: '/login',
-  },
+    signIn: '/auth'
+  }
 });
 
-// This config ensures that any path matching e.g. /dashboard or /settings
-// will require authentication:
 export const config = {
-  matcher: [
-    '/dashboard/:path*',
-    '/settings/:path*',
-  ],
+  matcher: ['/dashboard/:path*', '/settings/:path*']
 };

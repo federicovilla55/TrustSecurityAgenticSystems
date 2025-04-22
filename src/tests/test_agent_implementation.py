@@ -8,6 +8,7 @@ from src.runtime import Runtime, get_model, register_orchestrator, register_my_a
 from src.client import Client
 from src.models import *
 from src.enums import *
+from src.database import init_database, close_database, clear_database
 
 """
 This test only verifies the correct implementation and creation of agents and tries
@@ -15,6 +16,7 @@ to connect them without considering which connection are approved or refused.
 """
 @pytest.mark.asyncio
 async def test_agent_implementation():
+    init_database()
     Runtime.start_runtime()
 
     model_name = "meta-llama/Llama-3.3-70B-Instruct"
@@ -93,4 +95,6 @@ async def test_agent_implementation():
     assert(relations_full.agents_relation_full['Alice', 'Bob'][1] == Relation.USER_ACCEPTED)
     assert(relations_full.agents_relation_full['Bob', 'Alice'][1] == Relation.USER_REFUSED)
 
+    clear_database()
+    close_database()
 

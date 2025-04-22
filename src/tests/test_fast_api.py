@@ -3,8 +3,10 @@ import time
 
 import pytest
 from fastapi.testclient import TestClient
-from ..fast_api.python_api import app, database, SECRET_KEY
+from ..fast_api.python_api import app, SECRET_KEY
 from src import Runtime, get_model, ModelType, register_agents, SetupMessage, Client, RequestType
+from src.database import clear_database, close_database
+from src.database import init_database
 from jose import jwt
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
@@ -23,11 +25,13 @@ class EnhancedJSONEncoder(json.JSONEncoder):
 
 @pytest.fixture
 def test_client():
-    database.clear()
+    clear_database()
+    close_database()
     yield TestClient(app)  # Ensure this yields the actual FastAPI app instance
 
 @pytest_asyncio.fixture(scope="function")  # Add function scope
 async def register_runtime():
+    init_database()
     Runtime.start_runtime()
     try:
         model_name = "meta-llama/Llama-3.3-70B-Instruct"
@@ -47,7 +51,7 @@ async def cleanup_runtime():
 
 
 # Synchronous test for authentication
-def test_authentication(test_client):
+def test_authentication(test_client, register_runtime, cleanup_runtime):
     response = test_client.post("/api/register",
         json={
             "username": "testuser",

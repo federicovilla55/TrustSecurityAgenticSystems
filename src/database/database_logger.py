@@ -8,41 +8,8 @@ import json
 
 DATABASE_PATH = Path('database.db')
 
-class DatabaseLogger(logging.Handler):
-    def __init__(self) -> None:
-        super().__init__()
-        self.db_conn = sqlite3.connect(DATABASE_PATH)
-        self._create_table()
-
-    def _create_table(self) -> None:
-        self.db_conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS events_log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                event_type TEXT,
-                timestamp TEXT,
-                data JSON
-            )
-            """
-        )
-
-        self.db_conn.commit()
-
-    def emit(self, record : logging.LogRecord) -> None:
-        try:
-            event = record.msg
-            data = asdict(event)
-            self.db_conn.execute(
-                "INSERT INTO events_log (event_type, timestamp, data) VALUES (?, ?, ?)",
-                (data["event_type"], data.get("timestamp"), str(data))
-            )
-            self.db_conn.commit()
-        except Exception as e:
-            print(f'Exception occurred: {e}')
-            self.handleError(record)
-
 def init_database():
-    db = sqlite3.connect(DATABASE_PATH)
+    db = get_database()
 
     db.execute(
         """
@@ -76,8 +43,6 @@ def init_database():
         )
         """
    )
-
-
 
 def get_database():
     return sqlite3.connect(DATABASE_PATH)
@@ -133,7 +98,6 @@ def get_user(db, username: str):
     return cursor.fetchone()
 
 async def log_event(event_type: str, source: str, data: object):
-    """Log structured events to the database"""
     db = get_database()
 
     def serialize(obj):

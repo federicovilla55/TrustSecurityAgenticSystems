@@ -123,6 +123,8 @@ export default function DashboardPage() {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<MessageType[]>([]);
 
+  const timersRef = useRef<Record<string, NodeJS.Timeout>>({});
+
   const [suggestedAgents, setSuggestedAgents] = useState<Record<string, string>>({});
   const [processingAgent, setProcessingAgent] = useState<string | null>(null);
 
@@ -133,15 +135,19 @@ export default function DashboardPage() {
   const strictnessOptions = [
     {
       value: 0,
-      description: 'Allow connections from any source without strict checks.'
+      description: "Connect with anyone sharing common interests (e.g., hobbies, projects)."
     },
     {
       value: 1,
-      description: 'Verify connections from known sources and perform basic checks.'
+      description: "Connect with users in the same industry (e.g., tech, healthcare)."
     },
     {
       value: 2,
-      description: 'Enforce strict verification and only allow pre-approved connections.'
+      description: "Connect only with users from the same organization/company."
+    },
+    {
+      value: 3,
+      description: "Connect with users from the same organization AND similar job title/role (e.g., 'Senior Engineer at Microsoft')."
     }
   ];
 
@@ -207,7 +213,6 @@ export default function DashboardPage() {
 
       if (!response.ok) throw new Error('Feedback failed');
 
-      // Remove the processed agent from the list
       setSuggestedAgents(prev => {
         const updated = { ...prev };
         delete updated[receiver];
@@ -221,7 +226,6 @@ export default function DashboardPage() {
 
     } catch (error) {
       console.error('Error sending feedback:', error);
-      // Optional: Show error message to user
     } finally {
       setProcessingAgent(null);
     }
@@ -333,7 +337,22 @@ export default function DashboardPage() {
       text,
       visible: true
     };
-    setMessages(prev => [...prev, newMessage]);
+
+    setMessages(prev => {
+      if (prev.length > 0) {
+        const previousMessageId = prev[prev.length - 1].id;
+        const timer = timersRef.current[previousMessageId];
+        if (timer) {
+          clearTimeout(timer);
+          delete timersRef.current[previousMessageId];
+        }
+      }
+      return [newMessage];
+    });
+
+    timersRef.current[newMessage.id] = setTimeout(() => {
+      closeMessage(newMessage.id);
+    }, 3000);
   };
 
   const removeMessage = (id: string) => {
@@ -344,7 +363,19 @@ export default function DashboardPage() {
     setMessages(prev => prev.map(msg =>
       msg.id === id ? {...msg, visible: false} : msg
     ));
+
+    const timer = timersRef.current[id];
+    if (timer) {
+      clearTimeout(timer);
+      delete timersRef.current[id];
+    }
   };
+
+  useEffect(() => {
+    return () => {
+      Object.values(timersRef.current).forEach(clearTimeout);
+    };
+  }, []);
 
 
   function startEditing() {

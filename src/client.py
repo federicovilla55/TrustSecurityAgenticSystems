@@ -152,7 +152,8 @@ class Client:
             'policies' : get_response.policies,
             'public_information' : get_response.public_information,
             'private_information' : get_response.private_information,
-            'isSetup' : get_response.is_setup
+            'isSetup' : get_response.is_setup,
+            'paused' : get_response.paused,
         }
     
     async def change_information(self, public_information : dict, private_information : dict, policies : dict) -> Status:

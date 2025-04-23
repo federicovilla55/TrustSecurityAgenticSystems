@@ -45,6 +45,8 @@ class OrchestratorAgent(RoutedAgent):
             self._registered_agents.remove(agent_id)
             self._paused_agents.add(agent_id)
 
+        print("PAUSED: ", agent_id)
+
     async def resume_agent(self, agent_id : str) -> None:
         async with self._agents_lock:
             if agent_id not in self._paused_agents or agent_id in self._registered_agents:
@@ -53,12 +55,16 @@ class OrchestratorAgent(RoutedAgent):
             self._paused_agents.remove(agent_id)
             self._registered_agents.add(agent_id)
 
+        print("RESUME: ", agent_id)
+
     async def delete_agent(self, agent_id : str) -> None:
         async with self._agents_lock:
             if agent_id in self._paused_agents:
                 self._paused_agents.remove(agent_id)
             if agent_id in self._registered_agents:
                 self._registered_agents.remove(agent_id)
+
+        print("DELETE: ", agent_id)
 
     async def get_registered_agents(self) -> set[str]:
         async with self._agents_lock:

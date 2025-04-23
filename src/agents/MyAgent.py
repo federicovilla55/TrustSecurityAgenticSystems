@@ -16,6 +16,20 @@ from ..models.messages import ActionRequest, InitMessage
 
 from ..utils import extract_section, remove_chain_of_thought, separate_categories, extract_json
 
+
+def default_rules(value: int) -> str:
+    if value == 0:
+        return "Connect with anyone sharing common interests (e.g., hobbies, projects)."
+    elif value == 1:
+        return "Connect with users in the same industry (e.g., tech, healthcare)."
+    elif value == 2:
+        return "Connect only with users from the same organization/company."
+    elif value == 3:
+        return "Connect with users from the same organization AND similar job title/role (e.g., 'Senior Engineer at Microsoft')."
+    else:
+        return ""
+
+
 class MyAgent(RoutedAgent):
     def __init__(self, model_client: ChatCompletionClient):
         super().__init__("my_agent")
@@ -149,6 +163,8 @@ class MyAgent(RoutedAgent):
                     - Exclude public personal information.
                     - Answer with a list of information provided by the user.
                     - Add precise context to each information to reduce uncertainty.
+                    USE THE FOLLOWING DEFAULT RULES:
+                    - {default_rules(message.default_value)}
                     
                     When answering, categorize your response into three sections using the following format:
                     **Public Information**:
@@ -273,6 +289,7 @@ class MyAgent(RoutedAgent):
                 public_information=self._public_information,
                 policies=self._policies,
                 private_information=self._private_information,
+                paused=self.is_paused()
             )
         )
 
@@ -336,6 +353,7 @@ class MyAgent(RoutedAgent):
             public_information={},
             private_information={},
             policies={},
+            paused=self.is_paused(),
             username=""
         )
 
@@ -355,6 +373,7 @@ class MyAgent(RoutedAgent):
             answer.policies = self._policies
 
         return answer
+
 
     @message_handler
     async def handle_action_request(self, message : ActionRequest, context: MessageContext) -> Status:
@@ -403,6 +422,7 @@ class MyAgent(RoutedAgent):
                 public_information=self._public_information,
                 policies=self._policies,
                 private_information=self._private_information,
+                paused=self.is_paused(),
             )
         )
 

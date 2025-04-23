@@ -82,6 +82,7 @@ class UserInformation:
     private_information: dict
     policies: dict
     username : str
+    paused : bool = False
     is_setup : bool = True
 
 @dataclass

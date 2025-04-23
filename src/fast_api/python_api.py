@@ -43,6 +43,7 @@ async def lifespan(app: FastAPI):
 
     # Initialize your resources and perform your startup tasks:
     model_name = "meta-llama/Llama-3.3-70B-Instruct"
+    #model_name = "qwen2.5"
     model_client_my_agent = get_model(
         model_type=ModelType.OLLAMA, model=model_name, temperature=0.7
     )
@@ -314,8 +315,6 @@ async def resume_agent(current_user: str = Depends(get_current_user)):
 
     operation = await client.resume_user()
 
-    operation = await client.pause_user()
-
     if operation != Status.COMPLETED:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -360,6 +359,8 @@ async def get_information(information : dict, current_user: str = Depends(get_cu
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid request type"
         )
+
+    print(f"GOTTEN INFOS: {response}")
 
     return response
 

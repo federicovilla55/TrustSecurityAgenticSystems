@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Set
+from typing import Optional, Set, Dict
 
 from .. import ActionType
 from ..enums import (Relation, RequestType, AgentRelations, AgentRelation_full)
@@ -13,6 +13,7 @@ class SetupMessage:
     """
     content: str
     user: str
+    default_value : int = 1
 
 @dataclass
 class ConfigurationMessage:
@@ -69,6 +70,7 @@ class GetResponse:
     agents_relation: AgentRelations = None
     agents_relation_full: AgentRelation_full = None
     registered_agents: Set[str] = None
+    users_and_public_info : Dict[str, str] = None
     # more types should be added when the orchestrator will contain more information
 
 @dataclass

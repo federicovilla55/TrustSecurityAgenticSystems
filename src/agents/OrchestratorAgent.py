@@ -28,6 +28,15 @@ class OrchestratorAgent(RoutedAgent):
         self._model_context_dict : Dict[str_pair, BufferedChatCompletionContext] = {}
         self._agents_lock = asyncio.Lock()
 
+    async def get_public_information(self, requested_user : str) -> str:
+        public_information : dict = {}
+        async with self._agents_lock:
+            public_information = self._agent_information.get(requested_user)[0]
+
+        print(public_information)
+
+        return '\n'.join([item['content'] for item in public_information])
+
     async def pause_agent(self, agent_id : str) -> None:
         async with self._agents_lock:
             if agent_id in self._paused_agents or agent_id not in self._registered_agents:
@@ -79,6 +88,56 @@ class OrchestratorAgent(RoutedAgent):
                 matches_for_agent[agent_pair] = relation
 
         return matches_for_agent
+
+    async def get_human_pending_requests(self, agent_id : str):
+        matches_copy = await self.get_matched_agents()
+
+        print(f"Current: {self._matched_agents}")
+
+        pending_requests : Dict[str, str] = {}
+
+        for agent_pair, relation in matches_copy.items():
+            if agent_id == agent_pair[0] and matches_copy[agent_pair] == Relation.ACCEPTED:
+                if matches_copy[(agent_pair[1], agent_pair[0])] == Relation.ACCEPTED:
+                    async with self._agents_lock:
+                        if self._matched_agents[agent_pair][1] != Relation.UNCONTACTED:
+                            continue
+
+                    pending_requests[agent_pair[1]] = await self.get_public_information(agent_pair[1])
+
+        print(f"Returning: {pending_requests}")
+
+        return pending_requests
+
+    async def get_established_relations(self, agent_id : str):
+        async with self._agents_lock:
+            matches = self._matched_agents.copy()
+
+        pending_requests: Dict[str, str] = {}
+
+        for agent_pair, relation_triplet in matches.items():
+            if agent_id == agent_pair[0] and matches[agent_pair][1] == Relation.USER_ACCEPTED:
+                if matches[(agent_pair[1], agent_pair[0])][1] == Relation.USER_ACCEPTED:
+                    pending_requests[agent_pair[1]] = await self.get_public_information(agent_pair[1])
+
+        print(f"Returning: {pending_requests}")
+
+        return pending_requests
+
+    async def get_unfeedback_relations(self, agent_id : str):
+        async with self._agents_lock:
+            matches = self._matched_agents.copy()
+
+        pending_requests: Dict[str, str] = {}
+
+        for agent_pair, relation_triplet in matches.items():
+            if agent_id == agent_pair[0] and matches[agent_pair][0] in [Relation.ACCEPTED, Relation.REFUSED]:
+                if matches[(agent_pair[1], agent_pair[0])][0] == Relation.UNCONTACTED:
+                    pending_requests[agent_pair[1]] = await self.get_public_information(agent_pair[1])
+
+        print(f"Returning: {pending_requests}")
+
+        return pending_requests
 
     async def get_agent_decision(self, sender : str, receiver : str) -> Relation:
         async with self._agents_lock:
@@ -235,6 +294,12 @@ class OrchestratorAgent(RoutedAgent):
             answer.registered_agents= await self.get_registered_agents()
         elif RequestType(message.request_type) == RequestType.GET_PERSONAL_RELATIONS:
             answer.agents_relation= await self.get_matches_for_agent(message.user)
+        elif RequestType(message.request_type) == RequestType.GET_PENDING_HUMAN_APPROVAL:
+            answer.users_and_public_info = await self.get_human_pending_requests(message.user)
+        elif RequestType(message.request_type) == RequestType.GET_ESTABLISHED_RELATIONS:
+            answer.users_and_public_info = await self.get_established_relations(message.user)
+        elif RequestType(message.request_type) == RequestType.GET_UNFEEDBACK_RELATIONS:
+            answer.users_and_public_info = await self.get_unfeedback_relations(message.user)
 
         return answer
 

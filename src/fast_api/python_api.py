@@ -23,7 +23,7 @@ from src.client import Client
 from src.models.messages import RequestType
 from src.enums.enums import Status, ModelType
 from src.runtime import Runtime, get_model, register_my_agent, register_orchestrator
-from src.database import DATABASE_PATH, get_user, create_user, get_database, init_database
+from src.database import DATABASE_PATH, get_user, create_user, get_database, init_database, clear_database
 
 SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
 ALGORITHM = "HS256"
@@ -34,6 +34,12 @@ clients = {}
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_database()
+
+    # Remove the following two lines if not for tests
+    clear_database()
+    init_database()
+
+
 
     # Initialize your resources and perform your startup tasks:
     model_name = "meta-llama/Llama-3.3-70B-Instruct"
@@ -155,7 +161,7 @@ async def register(registration_data_json : dict) -> dict:
     async with lock:
         clients[registration_data_json["username"]] = Client(registration_data_json["username"])
 
-    return {"status" : f"{registration_data_json['username']} is now registered."}
+    return {"status" : f"{registration_data_json['username']} is now registered.\nRedirecting to Dashboard..."}
 
 
 @router.post("/token", response_model=Token)
@@ -186,7 +192,9 @@ async def setup_user(setup_json: dict, user_token_data: str = Depends(get_curren
 
     clients[setup_json["user"]] = client
 
-    operation : Status = await client.setup_user(setup_json["content"])
+    print(f"SETUP OBJECT: {setup_json}")
+
+    operation : Status = await client.setup_user(setup_json["content"], int(setup_json["default_value"]))
 
     if operation != Status.COMPLETED:
         raise HTTPException(
@@ -248,11 +256,43 @@ async def change_information(information_json: dict, user_token_data: str = Depe
 async def get_relations(current_user: str = Depends(get_current_user)):
     client = await get_client(current_user)
 
+    relations = await client.get_agent_all_relations()
+
+    response = {'relations': relations}
+
+    return response
+
+@router.get("/get_pending_relations")
+async def get_pending_relations(current_user: str = Depends(get_current_user)):
+    client = await get_client(current_user)
+    print("ENTERED GET PENDING RELATIONS")
+
+    relations = await client.get_human_pending_relations()
+
+    response = {'relations': relations}
+
+    return response
+
+@router.get("/get_established_relations")
+async def get_established_relations(current_user: str = Depends(get_current_user)):
+    client = await get_client(current_user)
+
     relations = await client.get_agent_established_relations()
 
     response = {'relations': relations}
 
     return response
+
+@router.get("/get_agent_sent_decision")
+async def get_agent_sent_decision(current_user: str = Depends(get_current_user)):
+    client = await get_client(current_user)
+
+    relations = await client.get_agent_sent_decisions()
+
+    response = {'relations': relations}
+
+    return response
+
 
 @router.post("/pause")
 async def pause_agent(current_user: str = Depends(get_current_user)):
@@ -327,7 +367,7 @@ async def get_information(information : dict, current_user: str = Depends(get_cu
 async def send_feedback(data : dict, current_user: str = Depends(get_current_user)):
     client = await get_client(current_user)
 
-    await client.send_feedback(data['receiver'], data['feedback'])
+    await client.send_feedback(data['receiver'], data['feedback']==1)
 
     return {"status" : "feedback sent"}
 

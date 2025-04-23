@@ -120,6 +120,7 @@ class MyAgent(RoutedAgent):
             return Status.REPEATED
         print("Handling Setup")
 
+        print(f"Default value: {message.default_value}")
 
         username = message.user
         self._user = message.user
@@ -278,6 +279,8 @@ class MyAgent(RoutedAgent):
         await self.publish_message(
             configuration_message, topic_id=TopicId("orchestrator_agent", "default")
         )
+
+        print("SETUP COMPLETED")
 
         return Status.COMPLETED
 

@@ -6,20 +6,21 @@ import { useRouter } from 'next/navigation';
 
 export default function AuthPage() {
   const router = useRouter();
-  // Toggle between auth (login) or register mode
   const [mode, setMode] = useState<'auth' | 'register'>('auth');
 
-  // Form fields
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  // For user feedback (success/error messages)
   const [message, setMessage] = useState('');
 
-  // Toggle the mode between "auth" (login) and "register"
   function toggleMode() {
     setMode(prev => (prev === 'auth' ? 'register' : 'auth'));
     setMessage('');
+  }
+
+  function isValidUsername(name: string): boolean {
+    const validPattern = /^[a-zA-Z0-9_-]+$/;
+    return validPattern.test(name);
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -27,7 +28,13 @@ export default function AuthPage() {
     setMessage('');
 
     if (mode === 'register') {
-      // 1) Call FastAPI /api/register with JSON body
+      if (!isValidUsername(username)) {
+        setMessage(
+          `Invalid name: ${username}. Only letters, numbers, '_' and '-' are allowed.`
+        );
+        return;
+      }
+
       try {
         const res = await fetch('http://localhost:8000/api/register', {
           method: 'POST',
@@ -37,13 +44,10 @@ export default function AuthPage() {
         const data = await res.json();
 
         if (!res.ok) {
-          // If 400 or some error, show message
           setMessage(data.detail || 'Registration failed.');
         } else {
-          // Registration success
           setMessage(data.status || 'Registration successful!');
 
-          // 2) Auto-login (like the tests do)
           const formData = new URLSearchParams();
           formData.append('username', username);
           formData.append('password', password);
@@ -65,9 +69,7 @@ export default function AuthPage() {
         setMessage('Registration request failed.');
       }
     } else {
-      // mode === 'auth' (login)
       try {
-        // POST /api/token with form data
         const formData = new URLSearchParams();
         formData.append('username', username);
         formData.append('password', password);
@@ -92,7 +94,7 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-200 p-4">
+    <div className="min-h-screen flex items-center justify-center text-black p-4">
       <div className="max-w-md w-full bg-white p-6 rounded shadow">
         <h1 className="text-2xl font-bold mb-4 text-center">
           {mode === 'auth' ? 'Login' : 'Register'}

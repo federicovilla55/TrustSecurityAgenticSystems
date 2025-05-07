@@ -346,6 +346,7 @@ class OrchestratorAgent(RoutedAgent):
         elif ActionType(message.request_type) == ActionType.RESUME_AGENT:
             await self.resume_agent(message.user)
         elif ActionType(message.request_type) == ActionType.DELETE_AGENT:
+            await self.reset_agent_pairings(message.user)
             await self.delete_agent(message.user)
         elif ActionType(message.request_type) == ActionType.RESET_AGENT:
             await self.reset_agent_pairings(message.user)

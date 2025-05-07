@@ -12,4 +12,4 @@ json_pair = Tuple[dict, dict]
 relation_triplet = Tuple[Relation, Relation, list]
 
 AgentRelations = Dict[str_pair, Relation]
-AgentRelation_full = Dict[str_pair, relation_triplet]
+AgentRelation_full = Dict[str_pair, Dict[str, relation_triplet]]

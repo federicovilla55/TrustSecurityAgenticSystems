@@ -54,8 +54,8 @@ async def lifespan(app: FastAPI):
     try:
         # Start the runtime and register your agents
         Runtime.start_runtime()
-        await register_my_agent(model_client_my_agent)
-        await register_orchestrator(model_client_orchestrator)
+        await register_my_agent(model_client_my_agent, {model_name : model_client_my_agent})
+        await register_orchestrator(model_client_orchestrator, model_name)
         # Everything is ready: yield control to start serving requests
         yield
         # Optionally, you can print a success message here if desired:

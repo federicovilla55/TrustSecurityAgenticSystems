@@ -31,8 +31,10 @@ def default_rules(value: int) -> str:
 
 
 class MyAgent(RoutedAgent):
-    def __init__(self, model_client: ChatCompletionClient):
+    def __init__(self, model_client: ChatCompletionClient, processing_model_clients : [str, ChatCompletionClient] = {}):
         super().__init__("my_agent")
+        if processing_model_clients is None:
+            processing_model_clients = {}
         self._paused = False
         self._user = None
         self._private_information = None
@@ -53,6 +55,11 @@ class MyAgent(RoutedAgent):
         self.refused_agents : Set[str] = set()
 
         print(f"Created: {self._id}")
+
+        self._processing_model_clients: Dict[str, ChatCompletionClient] = processing_model_clients
+
+    def get_model_clients(self) -> List[str]:
+        return list(self._processing_model_clients.keys())
 
     def get_public_information(self) -> str:
         """

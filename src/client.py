@@ -1,6 +1,6 @@
 from typing import Optional, Dict
 
-from src.models.messages import InitMessage, GetResponse
+from src.models.messages import InitMessage, GetResponse, ConfigurationMessage
 from src.runtime import Runtime
 from src.enums import Status, ActionType, AgentRelations, RequestType, Relation
 from src.models import SetupMessage, ActionRequest, UserInformation, GetRequest, FeedbackMessage
@@ -156,13 +156,22 @@ class Client:
             'paused' : get_response.paused,
         }
     
-    async def change_information(self, public_information : dict, private_information : dict, policies : dict) -> Status:
+    async def change_information(self, public_information : dict, private_information : dict, policies : dict, reset : bool = False) -> Status:
+        if reset:
+            # Resetting previously made agent connections.
+            await Runtime.send_message(
+                message=ActionRequest(request_type=ActionType.RESET_AGENT.value, user=self._username),
+                agent_type="my_agent",
+                agent_key=self._username,
+            )
+
         return await Runtime.send_message(
             message=UserInformation(
                 public_information=public_information,
                 private_information=private_information,
                 policies=policies,
-                username=self._username
+                username=self._username,
+                reset_connections = reset,
             ),
             agent_type="my_agent",
             agent_key=self._username

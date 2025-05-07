@@ -84,6 +84,7 @@ class UserInformation:
     username : str
     paused : bool = False
     is_setup : bool = True
+    reset_connections : bool = False
 
 @dataclass
 class InitMessage:

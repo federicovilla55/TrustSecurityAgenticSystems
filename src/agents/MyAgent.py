@@ -399,6 +399,9 @@ class MyAgent(RoutedAgent):
                 self._private_information = None
                 operation = await self.notify_orchestrator(ActionType.DELETE_AGENT)
                 self._user = None
+            elif ActionType(message.request_type) == ActionType.RESET_AGENT:
+                self._paused = False
+                operation = await self.notify_orchestrator(ActionType.RESET_AGENT)
 
         return operation
 
@@ -425,6 +428,16 @@ class MyAgent(RoutedAgent):
                 paused=self.is_paused(),
             )
         )
+
+        if message.reset_connections:
+            new_conf_message = ConfigurationMessage(
+                user=self._user,
+                user_information=self._public_information,
+                user_policies=self._policies,
+            )
+            await self.publish_message(
+                new_conf_message, topic_id=TopicId("orchestrator_agent", "default")
+            )
 
 
         return Status.COMPLETED

@@ -24,6 +24,7 @@ class ActionType(Enum):
     PAUSE_AGENT = 1
     RESUME_AGENT = 2
     DELETE_AGENT = 3
+    RESET_AGENT = 4
 
 class ModelType(Enum):
     OLLAMA = 1

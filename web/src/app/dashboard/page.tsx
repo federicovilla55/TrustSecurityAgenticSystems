@@ -114,6 +114,8 @@ export default function DashboardPage() {
   const [editedPublic, setEditedPublic] = useState('');
   const [editedPrivate, setEditedPrivate] = useState('');
 
+  const [resetConnections, setResetConnections] = useState(false);
+
   const [sentDecisions, setSentDecisions] = useState<Record<string, string>>({});
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -392,6 +394,7 @@ export default function DashboardPage() {
   function cancelEditing() {
     setEditing(false);
     setMessage('');
+    setResetConnections(false);
   }
 
   async function saveEdits() {
@@ -412,6 +415,7 @@ export default function DashboardPage() {
       policies: parsedPolicies,
       public_information: parsedPublic,
       private_information: parsedPrivate,
+      reset: resetConnections ? 1 : 0,
     };
 
     try {
@@ -432,6 +436,7 @@ export default function DashboardPage() {
 
       addMessage('Changes saved successfully!');
       setEditing(false);
+      setResetConnections(false);
       await fetchAgentInformation();
     } catch (error) {
       console.error(error);
@@ -798,6 +803,20 @@ export default function DashboardPage() {
                           className="w-full border p-2 rounded h-40 mb-4"
                           value={editedPrivate}
                           onChange={(e) => setEditedPrivate(e.target.value)}/>
+
+                      <div className="flex items-center mb-4 space-x-2">
+                        <input
+                          id="resetConnections"
+                          type="checkbox"
+                          checked={resetConnections}
+                          onChange={() => setResetConnections(prev => !prev)}
+                          className="h-4 w-4 border-gray-300 rounded"
+                        />
+                        <label htmlFor="resetConnections" className="text-sm text-gray-600">
+                          Reset existing connections
+                        </label>
+                      </div>
+
 
                       <div className="flex gap-2 mt-4">
                         <button

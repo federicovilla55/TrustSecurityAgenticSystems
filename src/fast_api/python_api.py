@@ -210,11 +210,17 @@ async def change_information(information_json: dict, user_token_data: str = Depe
     db = get_database()
     user = get_user(db, information_json["user"])
 
-    if ("public_information" not in information_json.keys() or "private_information" not in information_json.keys()
-            or "policies" not in information_json.keys()) or not user:
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User not found"
+        )
+
+    if ("public_information" not in information_json.keys() or "private_information" not in information_json.keys()
+            or "policies" not in information_json.keys()):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Request Incomplete"
         )
 
     if information_json["user"] != user_token_data:
@@ -225,7 +231,14 @@ async def change_information(information_json: dict, user_token_data: str = Depe
 
     client = Client(information_json["user"])
 
-    operation : Status = await client.change_information(information_json["public_information"], information_json["private_information"], information_json["policies"])
+    reset_connections = ("reset" not in information_json) or (information_json["reset"] == 1)
+
+    operation : Status = await client.change_information(
+        information_json["public_information"],
+        information_json["private_information"],
+        information_json["policies"],
+        reset_connections
+    )
 
     if operation != Status.COMPLETED:
         raise HTTPException(

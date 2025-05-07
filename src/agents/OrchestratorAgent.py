@@ -66,6 +66,28 @@ class OrchestratorAgent(RoutedAgent):
 
         print("DELETE: ", agent_id)
 
+    async def reset_agent_pairings(self, agent_id : str) -> None:
+        print(f"Resetting {agent_id} pairings...")
+        async with self._agents_lock:
+            print(f"Previous matches {self._matched_agents} and registered {self._registered_agents}")
+            if not (agent_id in self._registered_agents or agent_id in self._paused_agents):
+                return
+
+        agents_relation_full = await self.get_matched_agents(full=True)
+
+        keys_to_remove = []
+        for key in agents_relation_full:
+            if agent_id in key[0] or agent_id in key[1]:
+                keys_to_remove.append(key)
+
+        print(f"Keys to remove: {keys_to_remove}")
+
+        async with self._agents_lock:
+            for key_pair in keys_to_remove:
+                del self._matched_agents[key_pair]
+
+            print(f"Updated connections: {self._matched_agents}")
+
     async def get_registered_agents(self) -> set[str]:
         async with self._agents_lock:
             return self._registered_agents.copy()
@@ -316,6 +338,9 @@ class OrchestratorAgent(RoutedAgent):
         elif ActionType(message.request_type) == ActionType.RESUME_AGENT:
             await self.resume_agent(message.user)
         elif ActionType(message.request_type) == ActionType.DELETE_AGENT:
+            await self.delete_agent(message.user)
+        elif ActionType(message.request_type) == ActionType.RESET_AGENT:
+            await self.reset_agent_pairings(message.user)
             await self.delete_agent(message.user)
 
         await log_event(

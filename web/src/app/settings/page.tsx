@@ -11,6 +11,7 @@ interface AgentInformation {
   isSetup: boolean;
   paused: boolean;
   username: string;
+  reset: number;
 }
 
 interface MessageType {
@@ -24,6 +25,16 @@ interface SettingMenuProperties {
   username: string;
   info: AgentInformation | null;
 }
+
+interface AvailableModel {
+  name: string;
+  active: boolean;
+}
+
+interface ModelUpdateRequest {
+  [key: string]: boolean;
+}
+
 
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -115,10 +126,29 @@ export default function SettingsPage() {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [resetConnections, setResetConnections] = useState(false);
+
   const [editedPolicies, setEditedPolicies] = useState('');
   const [editedPublic, setEditedPublic] = useState('');
   const timersRef = useRef<Record<string, NodeJS.Timeout>>({});
   const [editedPrivate, setEditedPrivate] = useState('');
+
+  const [availableModels, setAvailableModels] = useState<AvailableModel[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [isSavingModels, setIsSavingModels] = useState(false);
+  const [isEditingModels, setIsEditingModels] = useState(false);
+  const [editedModels, setEditedModels] = useState<AvailableModel[]>([]);
+
+  const startEditingModels = () => {
+    setEditedModels([...availableModels]);
+    setIsEditingModels(true);
+  };
+
+  const cancelEditingModels = () => {
+    setIsEditingModels(false);
+  };
+
+
 
   useEffect(() => {
     if (status ==='loading') return;
@@ -183,6 +213,102 @@ export default function SettingsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    async function fetchAvailableModels() {
+      if (!session?.user?.accessToken || !info?.isSetup) return;
+      setIsLoadingModels(true);
+      try {
+        const res = await fetch(`${API_URL}/api/get_agent_models`, {
+          headers: { Authorization: `Bearer ${session.user.accessToken}` },
+        });
+
+        if (!res.ok) throw new Error('Failed to fetch models');
+
+        const data: { models: AvailableModel[] } = await res.json();
+
+        // Validate response structure
+        if (!Array.isArray(data.models)) {
+          throw new Error('Invalid response format: "models" must be an array');
+        }
+
+        setAvailableModels(data.models); // Only update if valid
+      } catch (error) {
+        console.error('Fetch error:', error);
+        addMessage('Failed to fetch available models');
+        setAvailableModels([]); // Fallback to empty array
+      } finally {
+        setIsLoadingModels(false);
+      }
+    }
+    fetchAvailableModels();
+  }, [session?.user?.accessToken, info?.isSetup]);
+  const saveModelChanges = async () => {
+    try {
+      const updatePayload = editedModels.reduce((acc, model) => ({
+        ...acc,
+        [model.name]: model.active
+      }), {});
+
+      const res = await fetch(`${API_URL}/api/update_models`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.user?.accessToken}`,
+        },
+        body: JSON.stringify(updatePayload),
+      });
+
+      if (res.ok) {
+        setAvailableModels(editedModels); // Update local state
+        setIsEditingModels(false);
+        addMessage('Model preferences updated successfully');
+      } else {
+        throw new Error('Failed to save');
+      }
+    } catch (error) {
+      addMessage('Error saving model preferences');
+    }
+  };
+
+
+  const handleModelToggle = (modelName: string) => {
+    setAvailableModels(prev => prev.map(model =>
+      model.name === modelName
+        ? { ...model, active: !model.active }
+        : model
+    ));
+  };
+
+    const saveModelStates = async () => {
+    if (!session?.user?.accessToken) return;
+
+    setIsSavingModels(true);
+    try {
+      const updatePayload: ModelUpdateRequest = availableModels.reduce((acc, model) => ({
+        ...acc,
+        [model.name]: model.active
+      }), {});
+
+      const res = await fetch(`${API_URL}/api/update_models`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.user.accessToken}`,
+        },
+        body: JSON.stringify(updatePayload),
+      });
+
+      if (!res.ok) throw new Error('Failed to save model states');
+
+      addMessage('Model preferences updated successfully');
+    } catch (error) {
+      addMessage('Error saving model preferences');
+    } finally {
+      setIsSavingModels(false);
+    }
+  };
+
+
   async function fetchAgentInformation() {
     if (!session?.user?.accessToken) return;
 
@@ -208,7 +334,8 @@ export default function SettingsPage() {
         private_information: data.private_information,
         username: data.username,
         paused: data.paused,
-        isSetup: data.isSetup
+        isSetup: data.isSetup,
+        reset: resetConnections ? 1 : 0,
       });
 
       setEditedPolicies(JSON.stringify(data.policies || [], null, 2));
@@ -356,6 +483,87 @@ export default function SettingsPage() {
           </div>
         </div>
 
+          {isEditingModels ? (
+            <div className="flex gap-2">
+              <button
+                onClick={saveModelChanges}
+                className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+                disabled={isLoadingModels}
+              >
+                Save Changes
+              </button>
+              <button
+                onClick={cancelEditingModels}
+                className="bg-gray-300 px-4 py-2 rounded"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={startEditingModels}
+              className="text-gray-500 hover:text-gray-700"
+              title="Edit models"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                />
+              </svg>
+            </button>
+          )}
+        {isLoadingModels ? (
+          <div className="flex justify-center py-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600"></div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(isEditingModels ? editedModels : availableModels).map((model) => (
+              <div
+                key={model.name}
+                className={`flex items-center p-4 rounded border ${
+                  !model.active ? 'bg-gray-50 opacity-60' : 'bg-white'
+                }`}
+              >
+                {isEditingModels && (
+                  <input
+                    type="checkbox"
+                    checked={model.active}
+                    onChange={() =>
+                      setEditedModels((prev) =>
+                        prev.map((m) =>
+                          m.name === model.name
+                            ? { ...m, active: !m.active }
+                            : m
+                        )
+                      )
+                    }
+                    className="h-5 w-5 text-blue-600 rounded border-gray-300 mr-3"
+                  />
+                )}
+                <label
+                  className={`block text-sm font-medium ${
+                    model.active ? 'text-gray-900' : 'text-gray-500'
+                  }`}
+                >
+                  {model.name}
+                </label>
+              </div>
+            ))}
+          </div>
+        )}
+        {!isLoadingModels && availableModels.length === 0 && (
+          <p className="text-gray-500 italic">No models available</p>
+        )}
+
         <div className="border p-4 rounded bg-white">
           <h2 className="text-lg font-semibold mb-4">Edit Policies</h2>
           <textarea
@@ -377,6 +585,19 @@ export default function SettingsPage() {
             value={editedPrivate}
             onChange={(e) => setEditedPrivate(e.target.value)}
           />
+
+          <div className="flex items-center mb-4 space-x-2">
+            <input
+              id="resetConnections"
+              type="checkbox"
+              checked={resetConnections}
+              onChange={() => setResetConnections(prev => !prev)}
+              className="h-4 w-4 border-gray-300 rounded"
+            />
+            <label htmlFor="resetConnections" className="text-sm text-gray-600">
+              Reset existing connections
+            </label>
+          </div>
 
           <button
             onClick={saveEdits}

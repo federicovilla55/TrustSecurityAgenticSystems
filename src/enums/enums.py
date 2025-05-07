@@ -19,6 +19,7 @@ class RequestType(Enum):
     GET_PENDING_HUMAN_APPROVAL = 9
     GET_ESTABLISHED_RELATIONS = 10
     GET_UNFEEDBACK_RELATIONS = 11
+    GET_MODELS = 12
 
 class ActionType(Enum):
     PAUSE_AGENT = 1

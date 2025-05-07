@@ -3,7 +3,8 @@ from typing import Optional, Dict
 from src.models.messages import InitMessage, GetResponse, ConfigurationMessage
 from src.runtime import Runtime
 from src.enums import Status, ActionType, AgentRelations, RequestType, Relation
-from src.models import SetupMessage, ActionRequest, UserInformation, GetRequest, FeedbackMessage
+from src.models import (SetupMessage, ActionRequest, UserInformation,
+                        GetRequest, FeedbackMessage, ModelUpdate)
 import httpx
 
 
@@ -136,8 +137,29 @@ class Client:
                 agent_key=self._username
             )
         )
-
         return get_response.policies
+
+    async def get_models(self) -> dict:
+        get_model_request = GetRequest(
+            request_type=RequestType.GET_MODELS.value,
+            user=self._username,
+        )
+        get_models : GetResponse = (
+            await Runtime.send_message(
+                message=get_model_request,
+                agent_type="my_agent",
+                agent_key=self._username
+            )
+        )
+
+        return get_models.models
+
+    async def update_models(self, models : dict) -> Status:
+        return await Runtime.send_message(
+            message=ModelUpdate(models),
+            agent_type="my_agent",
+            agent_key=self._username
+        )
 
     async def get_information(self) -> dict:
         get_response : UserInformation = (

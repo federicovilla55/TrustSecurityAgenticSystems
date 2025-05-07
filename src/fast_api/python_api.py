@@ -51,10 +51,15 @@ async def lifespan(app: FastAPI):
         model_type=ModelType.OLLAMA, model=model_name, temperature=0.5
     )
 
+    model_name2 = "swissai/apertus3-70b-0425"
+    second_model = get_model(
+        model_type=ModelType.OLLAMA, model=model_name2, temperature=0.7
+    )
+
     try:
         # Start the runtime and register your agents
         Runtime.start_runtime()
-        await register_my_agent(model_client_my_agent, {model_name : model_client_my_agent})
+        await register_my_agent(model_client_my_agent, {model_name : model_client_my_agent, model_name2 : second_model})
         await register_orchestrator(model_client_orchestrator, model_name)
         # Everything is ready: yield control to start serving requests
         yield
@@ -306,6 +311,26 @@ async def get_agent_sent_decision(current_user: str = Depends(get_current_user))
     response = {'relations': relations}
 
     return response
+
+@router.get("/get_agent_models")
+async def get_agent_models(current_user: str = Depends(get_current_user)):
+    client = await get_client(current_user)
+
+    print(f"GOT MODEL REQUEST.")
+
+    models = await client.get_models()
+
+    print(f"Model requested: {models}")
+
+    return {'models':     [{"name": name, "active": active} for name, active in models.items()]}
+
+@router.post("/update_models")
+async def pause_agent(data : dict, current_user: str = Depends(get_current_user)):
+    client = await get_client(current_user)
+
+    operation_status = await client.update_models(data)
+
+    return {"status": "model_updated"}
 
 
 @router.post("/pause")

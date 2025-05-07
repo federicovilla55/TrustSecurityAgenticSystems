@@ -11,7 +11,7 @@ from src.database import get_database, get_user, log_event
 from src.enums import  Status, ActionType, Relation, RequestType
 
 from src.models import (UserInformation, SetupMessage, ConfigurationMessage, PairingRequest,
-                        PairingResponse, GetRequest, GetResponse)
+                        PairingResponse, GetRequest, GetResponse, ModelUpdate)
 from ..models.messages import ActionRequest, InitMessage
 
 from ..utils import extract_section, remove_chain_of_thought, separate_categories, extract_json
@@ -56,10 +56,21 @@ class MyAgent(RoutedAgent):
 
         print(f"Created: {self._id}")
 
-        self._processing_model_clients: Dict[str, ChatCompletionClient] = processing_model_clients
+        self._processing_model_clients: Dict[str, Tuple[bool, ChatCompletionClient]] = {
+            name: (True, client)
+            for name, client in processing_model_clients.items()
+        }
 
-    def get_model_clients(self) -> List[str]:
-        return list(self._processing_model_clients.keys())
+    def update_model_clients(self, updates: Dict[str, bool]) -> None:
+        for model_name, new_bool in updates.items():
+            if model_name in self._processing_model_clients:
+                _, client = self._processing_model_clients[model_name]
+                self._processing_model_clients[model_name] = (new_bool, client)
+
+        print(f"Updated models: {self.get_model_clients()}")
+
+    def get_model_clients(self) -> Dict[str, bool]:
+        return {name: value[0] for name, value in self._processing_model_clients.items()}
 
     def get_public_information(self) -> str:
         """
@@ -349,7 +360,7 @@ class MyAgent(RoutedAgent):
         return response
 
     @message_handler
-    async def handle_get_request(self, message : GetRequest, context: MessageContext) -> UserInformation:
+    async def handle_get_request(self, message : GetRequest, context: MessageContext) -> UserInformation | GetResponse:
         """
         Handles an incoming get request asking for some of the user personal information.
         :param message: The get request containing the type of information requested.
@@ -378,6 +389,11 @@ class MyAgent(RoutedAgent):
             answer.public_information = self._public_information
             answer.private_information = self._private_information
             answer.policies = self._policies
+        elif RequestType(message.request_type) == RequestType.GET_MODELS:
+            return GetResponse(
+                request_type=RequestType.GET_MODELS,
+                models=self.get_model_clients(),
+            )
 
         return answer
 
@@ -411,6 +427,12 @@ class MyAgent(RoutedAgent):
                 operation = await self.notify_orchestrator(ActionType.RESET_AGENT)
 
         return operation
+
+    @message_handler
+    async def update_model(self, message : ModelUpdate, context : MessageContext) -> Status:
+        self.update_model_clients(message.models)
+
+        return Status.COMPLETED
 
     @message_handler
     async def change_user_information(self, message : UserInformation, context : MessageContext) -> Status:

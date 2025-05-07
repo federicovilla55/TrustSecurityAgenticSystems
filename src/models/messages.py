@@ -71,6 +71,7 @@ class GetResponse:
     agents_relation_full: AgentRelation_full = None
     registered_agents: Set[str] = None
     users_and_public_info : Dict[str, str] = None
+    models : dict[str, bool] = None
     # more types should be added when the orchestrator will contain more information
 
 @dataclass
@@ -85,6 +86,13 @@ class UserInformation:
     paused : bool = False
     is_setup : bool = True
     reset_connections : bool = False
+
+@dataclass
+class ModelUpdate:
+    """
+    Message sent to select the LLM to be used for the pairings
+    """
+    models : Dict[str, bool]
 
 @dataclass
 class InitMessage:

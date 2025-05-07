@@ -41,7 +41,7 @@ class PairingResponse:
     Message sent by the orchestrator an agent to the orchestrator containing a response
     for a pairing request
     """
-    answer: Relation
+    answer: dict[str, Relation]
     reasoning: str
 
 

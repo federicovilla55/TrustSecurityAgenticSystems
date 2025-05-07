@@ -55,7 +55,7 @@ class Runtime:
             "orchestrator_agent",
             lambda: OrchestratorAgent(
                 model_client=model_client,
-                model_client_name=model_client_name
+                model_client_name=model_client_name,
             )
         )
 

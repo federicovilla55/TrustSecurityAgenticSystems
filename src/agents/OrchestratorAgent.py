@@ -231,6 +231,7 @@ class OrchestratorAgent(RoutedAgent):
 
         # To Do: determine if the orchestrator should check the model answers.
         check_pairing = 'VALID'
+
         '''check_pairing = await self.check_response(
             sender, receiver, sender_public_information,
             receiver_policies, pair_response.reasoning
@@ -253,7 +254,7 @@ class OrchestratorAgent(RoutedAgent):
             data={
                 "requester": sender,
                 "receiver" : receiver,
-                "decision": pair_response.answer.value,
+                "decision": pair_response.answer,
                 "reasoning": pair_response.reasoning[:500]
             }
         )
@@ -262,14 +263,16 @@ class OrchestratorAgent(RoutedAgent):
             feedback = f"Previous agent Reasoning: {pair_response.reasoning}\nFEEDBACK: {check_pairing.splitlines()[1:]}"
         elif 'VALID' in check_pairing.splitlines()[0]:
             async with self._agents_lock:
-                self._matched_agents[(sender, receiver)] = {self._model_client_name : (pair_response.answer, Relation.UNCONTACTED, [])}
+                for key, value in pair_response.answer.items():
+                    self._matched_agents[(sender, receiver)][key] = (value, Relation.UNCONTACTED, [])
             return
         else:
             print(f"ERROR: Unknown answer when handling pairing request to {receiver} from {sender}...")
             return
 
         async with self._agents_lock:
-            self._matched_agents[(sender, receiver)][self._model_client_name] = (pair_response.answer, Relation.UNCONTACTED, [])
+            for key, value in pair_response.answer.items():
+                self._matched_agents[(sender, receiver)][key] = (value, Relation.UNCONTACTED, [])
 
     async def match_agents(self, user_to_add: str) -> None:
         registered_agents_copy = await self.get_registered_agents()
@@ -285,6 +288,8 @@ class OrchestratorAgent(RoutedAgent):
             # Does the new agent accept the pair with the already registered agent?
             if matched_agents_copy.get((registered_agent, user_to_add)) == Relation.UNCONTACTED:
                 await self.pair_agent_with_feedback(registered_agent, user_to_add)
+
+        print(f"PAIRINGS TERMINATED: {await self.get_matched_agents(full=True)}")
 
     @message_handler
     async def agent_configuration(self, message: ConfigurationMessage, context: MessageContext) -> None:
@@ -358,22 +363,22 @@ class OrchestratorAgent(RoutedAgent):
     async def human_in_the_loop(self, message: FeedbackMessage, context: MessageContext) -> Status:
         print("FEEDBACK RECEIVED!")
         async with self._agents_lock:
-            if (message.sender, message.receiver) not in self._matched_agents:
+            key = (message.sender, message.receiver)
+            if key not in self._matched_agents:
                 print(f"No matching record found for {message.sender}->{message.receiver}")
                 return Status.FAILED
 
-            model_data = self._matched_agents[(message.sender, message.receiver)].get(self._model_client_name)
-            if not model_data:
-                print(f"No model data found for {self._model_client_name}")
+            models_dict = self._matched_agents[key]
+            if not models_dict:
+                print("No models present to update.")
                 return Status.FAILED
 
-            new_triplet = (
-                model_data[0],  # Original agent decision
-                Relation(message.feedback),  # New human feedback
-                model_data[2]  # Original policies that lead to the agent decision
-            )
-
-            self._matched_agents[(message.sender, message.receiver)][self._model_client_name] = new_triplet
+            for model_name, (orig_decision, _old_feedback, orig_policies) in list(models_dict.items()):
+                models_dict[model_name] = (
+                    orig_decision,
+                    Relation(message.feedback),
+                    orig_policies
+                )
 
         await log_event(
             event_type="human_feedback",

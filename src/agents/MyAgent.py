@@ -109,25 +109,35 @@ class MyAgent(RoutedAgent):
                 self._public_information is not None or self._private_information is not None)
 
     async def evaluate_connection(self, context, prompt, requester : str) -> PairingResponse:
-        llm_answer = await self._model_client.create(
-            messages=[self._system_message, UserMessage(content=prompt, source=self._user),] +
-                      await self._model_context.get_messages() +
-                      await self._model_context_dict[requester].get_messages(),
-            cancellation_token=context.cancellation_token,
-        )
+        pairing_response_status: dict[str, Relation] = {}
+        result = ""
 
-        #print(f"{'*' * 20}\nPROMPT REQUEST: {[self._system_message, UserMessage(content=prompt, source=self._user),]}\n{'*' * 20}\n")
-        #print(f"{'-' * 20}\n{self.id} ANSWER: {llm_answer.content}\n{'-' * 20}\n")
+        for model_name, (is_active, model_client) in self._processing_model_clients.items():
+            if not is_active:
+                continue
 
-        result = remove_chain_of_thought(llm_answer.content)
+            llm_answer = await model_client.create(
+                messages=[self._system_message, UserMessage(content=prompt, source=self._user),] +
+                          await self._model_context.get_messages() +
+                          await self._model_context_dict[requester].get_messages(),
+                cancellation_token=context.cancellation_token,
+            )
 
-        if 'REJECT' in result.splitlines()[0].upper():
-            return PairingResponse(Relation.REFUSED, result.splitlines()[1:])
-        elif 'ACCEPT' in result.splitlines()[0].upper():
-            return PairingResponse(Relation.ACCEPTED, result.splitlines()[1:])
-        else:
-            print(f"ERROR: Unknown answer when handling pairing request...")
-            return PairingResponse(Relation.REFUSED, result)
+            #print(f"{'*' * 20}\nPROMPT REQUEST: {[self._system_message, UserMessage(content=prompt, source=self._user),]}\n{'*' * 20}\n")
+            #print(f"{'-' * 20}\n{self.id} ANSWER: {llm_answer.content}\n{'-' * 20}\n")
+
+            result = remove_chain_of_thought(llm_answer.content)
+            first_line = result.splitlines()[0].upper()
+
+            if 'REJECT' in first_line:
+                pairing_response_status[model_name] = Relation.REFUSED
+            elif 'ACCEPT' in first_line:
+                pairing_response_status[model_name] = Relation.ACCEPTED
+            else:
+                print(f"ERROR: Unknown answer from model {model_name}")
+                pairing_response_status[model_name] = Relation.REFUSED
+
+        return PairingResponse(pairing_response_status, result)
 
     async def notify_orchestrator(self, action_type : ActionType) -> Status:
         message = ActionRequest(
@@ -329,10 +339,16 @@ class MyAgent(RoutedAgent):
         """
         #print(f"'{self.id}' Received pairing request from '{message.user}'")
         if not self.is_setup() or self.is_paused():
-            return PairingResponse(Relation.UNCONTACTED.value, "MyAgent is paused or its setup is incomplete.")
+            return PairingResponse(
+                {model_name: Relation.UNCONTACTED.value for model_name in self._processing_model_clients.keys()},
+                "MyAgent is paused or its setup is incomplete."
+            )
 
         if message.receiver != "" and message.receiver != self._user:
-            return PairingResponse(Relation.UNCONTACTED, "MyAgent is not the correct receiver fot the message")
+            return PairingResponse(
+                {model_name: Relation.UNCONTACTED.value for model_name in self._processing_model_clients.keys()},
+                "MyAgent is not the correct receiver fot the message"
+            )
 
         if message.requester not in self._model_context_dict.keys():
             self._model_context_dict[message.requester] = BufferedChatCompletionContext(buffer_size=6)

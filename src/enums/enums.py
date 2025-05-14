@@ -16,11 +16,16 @@ class RequestType(Enum):
     GET_POLICIES = 6
     GET_USER_INFORMATION = 7
     GET_AGENT_RELATIONS_FULL = 8
+    GET_PENDING_HUMAN_APPROVAL = 9
+    GET_ESTABLISHED_RELATIONS = 10
+    GET_UNFEEDBACK_RELATIONS = 11
+    GET_MODELS = 12
 
 class ActionType(Enum):
     PAUSE_AGENT = 1
     RESUME_AGENT = 2
     DELETE_AGENT = 3
+    RESET_AGENT = 4
 
 class ModelType(Enum):
     OLLAMA = 1

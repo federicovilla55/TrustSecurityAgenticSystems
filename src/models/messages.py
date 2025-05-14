@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Set
+from typing import Optional, Set, Dict
 
 from .. import ActionType
 from ..enums import (Relation, RequestType, AgentRelations, AgentRelation_full)
@@ -13,6 +13,7 @@ class SetupMessage:
     """
     content: str
     user: str
+    default_value : int = 1
 
 @dataclass
 class ConfigurationMessage:
@@ -40,7 +41,7 @@ class PairingResponse:
     Message sent by the orchestrator an agent to the orchestrator containing a response
     for a pairing request
     """
-    answer: Relation
+    answer: dict[str, Relation]
     reasoning: str
 
 
@@ -69,6 +70,8 @@ class GetResponse:
     agents_relation: AgentRelations = None
     agents_relation_full: AgentRelation_full = None
     registered_agents: Set[str] = None
+    users_and_public_info : Dict[str, str] = None
+    models : dict[str, bool] = None
     # more types should be added when the orchestrator will contain more information
 
 @dataclass
@@ -80,7 +83,16 @@ class UserInformation:
     private_information: dict
     policies: dict
     username : str
+    paused : bool = False
     is_setup : bool = True
+    reset_connections : bool = False
+
+@dataclass
+class ModelUpdate:
+    """
+    Message sent to select the LLM to be used for the pairings
+    """
+    models : Dict[str, bool]
 
 @dataclass
 class InitMessage:

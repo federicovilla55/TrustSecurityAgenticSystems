@@ -1,9 +1,10 @@
-from typing import Optional
+from typing import Optional, Dict
 
-from src.models.messages import InitMessage
+from src.models.messages import InitMessage, GetResponse, ConfigurationMessage
 from src.runtime import Runtime
 from src.enums import Status, ActionType, AgentRelations, RequestType, Relation
-from src.models import SetupMessage, ActionRequest, UserInformation, GetRequest, FeedbackMessage
+from src.models import (SetupMessage, ActionRequest, UserInformation,
+                        GetRequest, FeedbackMessage, ModelUpdate)
 import httpx
 
 
@@ -23,8 +24,8 @@ class Client:
         print("INIT AGENT")
         await Runtime.send_message(InitMessage(), "my_agent", self._username)
 
-    async def setup_user(self, user_content: str) -> Status:
-        return await Runtime.send_message(SetupMessage(content=user_content, user=self._username), "my_agent", self._username)
+    async def setup_user(self, user_content: str, default_value : int = 1) -> Status:
+        return await Runtime.send_message(SetupMessage(content=user_content, user=self._username, default_value=default_value), "my_agent", self._username)
 
     async def pause_user(self) -> Status:
         return await Runtime.send_message(
@@ -47,20 +48,50 @@ class Client:
             agent_key=self._username
         )
 
-    async def get_agent_established_relations(self) -> AgentRelations:
+    async def get_agent_all_relations(self) -> AgentRelations:
         # this should return the relations the agents has made, so the agents that have been connected and confirmed by the agent only
-        matches = (
+        matches : GetResponse = (
             await Runtime.send_message(
                     message=GetRequest(request_type=RequestType.GET_PERSONAL_RELATIONS.value, user=self._username),
                     agent_type="orchestrator_agent",
             )
         )
 
-        return matches
+        return matches.agents_relation
+
+    async def get_human_pending_relations(self) -> Dict[str, str]:
+        matches : GetResponse = (
+            await Runtime.send_message(
+                message=GetRequest(request_type=RequestType.GET_PENDING_HUMAN_APPROVAL.value, user=self._username),
+                agent_type="orchestrator_agent",
+            )
+        )
+
+        return matches.users_and_public_info
+
+    async def get_agent_established_relations(self) -> Dict[str, str]:
+        matches : GetResponse = (
+            await Runtime.send_message(
+                message=GetRequest(request_type=RequestType.GET_ESTABLISHED_RELATIONS.value, user=self._username),
+                agent_type="orchestrator_agent",
+            )
+        )
+
+        return matches.users_and_public_info
+
+    async def get_agent_sent_decisions(self) -> Dict[str, str]:
+        matches : GetResponse = (
+            await Runtime.send_message(
+                message=GetRequest(request_type=RequestType.GET_UNFEEDBACK_RELATIONS.value, user=self._username),
+                agent_type="orchestrator_agent",
+            )
+        )
+
+        return matches.users_and_public_info
 
     async def get_pairing(self) -> AgentRelations:
         # this should return the relations the agents have made and that the humans have confirmed.
-        pairings = (
+        pairings : GetResponse = (
             await Runtime.send_message(
                 message=GetRequest(request_type=RequestType.GET_PERSONAL_RELATIONS.value, user=self._username),
                 agent_type="orchestrator_agent",
@@ -106,8 +137,29 @@ class Client:
                 agent_key=self._username
             )
         )
-
         return get_response.policies
+
+    async def get_models(self) -> dict:
+        get_model_request = GetRequest(
+            request_type=RequestType.GET_MODELS.value,
+            user=self._username,
+        )
+        get_models : GetResponse = (
+            await Runtime.send_message(
+                message=get_model_request,
+                agent_type="my_agent",
+                agent_key=self._username
+            )
+        )
+
+        return get_models.models
+
+    async def update_models(self, models : dict) -> Status:
+        return await Runtime.send_message(
+            message=ModelUpdate(models),
+            agent_type="my_agent",
+            agent_key=self._username
+        )
 
     async def get_information(self) -> dict:
         get_response : UserInformation = (
@@ -122,16 +174,26 @@ class Client:
             'policies' : get_response.policies,
             'public_information' : get_response.public_information,
             'private_information' : get_response.private_information,
-            'isSetup' : get_response.is_setup
+            'isSetup' : get_response.is_setup,
+            'paused' : get_response.paused,
         }
     
-    async def change_information(self, public_information : dict, private_information : dict, policies : dict) -> Status:
+    async def change_information(self, public_information : dict, private_information : dict, policies : dict, reset : bool = False) -> Status:
+        if reset:
+            # Resetting previously made agent connections.
+            await Runtime.send_message(
+                message=ActionRequest(request_type=ActionType.RESET_AGENT.value, user=self._username),
+                agent_type="my_agent",
+                agent_key=self._username,
+            )
+
         return await Runtime.send_message(
             message=UserInformation(
                 public_information=public_information,
                 private_information=private_information,
                 policies=policies,
-                username=self._username
+                username=self._username,
+                reset_connections = reset,
             ),
             agent_type="my_agent",
             agent_key=self._username

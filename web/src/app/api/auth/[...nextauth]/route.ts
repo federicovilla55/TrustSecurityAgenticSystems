@@ -3,16 +3,14 @@ import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { NextAuthOptions } from 'next-auth';
 
-// Pull from .env or fallback
 const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export const authOptions: NextAuthOptions = {
-  secret: process.env.NEXTAUTH_SECRET, // for signing/encrypting session tokens
+  secret: process.env.NEXTAUTH_SECRET,
 
   session: {
-    // We'll use JWT-based sessions
     strategy: 'jwt',
-    maxAge: 60 * 60 // 1 hour
+    maxAge: 60 * 60
   },
 
   providers: [
@@ -27,7 +25,6 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Missing username or password');
         }
 
-        // Call FastAPI /api/token
         const res = await fetch(`${backendUrl}/api/token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -43,13 +40,11 @@ export const authOptions: NextAuthOptions = {
           throw new Error(errorMsg);
         }
 
-        // If successful, parse JSON
         const data = await res.json() as { access_token: string; token_type: string };
         if (!data?.access_token) {
           throw new Error('No access token returned');
         }
 
-        // Return a user object. NextAuth merges this with the `User` type
         return {
           id: credentials.username,
           name: credentials.username,
@@ -84,5 +79,4 @@ export const authOptions: NextAuthOptions = {
 
 const handler = NextAuth(authOptions);
 
-// Required for Next.js App Router, so we export as GET and POST:
 export { handler as GET, handler as POST };

@@ -36,7 +36,7 @@ async def register_runtime():
     try:
         model_name = "meta-llama/Llama-3.3-70B-Instruct"
         model_client = get_model(model_type=ModelType.OLLAMA, model=model_name)
-        await register_agents(model_client)
+        await register_agents(model_client, model_name, {model_name : model_client})
     except Exception as e:
         print(f"Error during registration: {e}")
     yield
@@ -98,7 +98,7 @@ async def test_protected_endpoints(test_client, register_runtime, cleanup_runtim
         # Access protected endpoint
         response = await client.post(
             "/api/setup",
-            json={"user": "testuser", "content": "test"},
+            json={"user": "testuser", "content": "test", "default_value" : 1},
             headers={"Authorization": f"Bearer {token}"}
         )
         assert response.status_code == 200
@@ -130,7 +130,7 @@ async def test_agent_operations(test_client, register_runtime, cleanup_runtime):
 
         response = await client.post(
             "/api/setup",
-            json={"user": "testuser", "content": "test"},
+            json={"user": "testuser", "content": "test", "default_value" : 1},
             headers={"Authorization": f"Bearer {token}"}
         )
         assert response.status_code == 200
@@ -164,6 +164,7 @@ async def test_agent_get_information(test_client, register_runtime, cleanup_runt
             json={
                 "user": "testuser",
                 "content": "I am Alice, an ETH student. I study computer science and I want to connect to other students from ETH or workers from Big tech companies.",
+                "default_value": 1,
             },
             headers={"Authorization": f"Bearer {token}"}
         )
@@ -236,6 +237,7 @@ async def test_agent_change_information(test_client, register_runtime, cleanup_r
             json={
                 "user": "testuser",
                 "content": "I am Alice, an ETH student. I study computer science and I want to connect to other students from ETH or workers from Big tech companies.",
+                "default_value" : 1
             },
             headers={"Authorization": f"Bearer {token}"}
         )
@@ -319,6 +321,7 @@ async def test_unchanged_setup_repeated(test_client, register_runtime, cleanup_r
             json={
                 "user": "testuser",
                 "content": "I am Alice, an ETH student. I study computer science and I want to connect to other students from ETH or workers from Big tech companies.",
+                "default_value" : 1
             },
             headers={"Authorization": f"Bearer {token}"}
         )
@@ -344,6 +347,7 @@ async def test_unchanged_setup_repeated(test_client, register_runtime, cleanup_r
             json={
                 "user": "testuser",
                 "content": "I am Alice, an ETH student. I study computer science and I want to connect to other students from ETH or workers from Big tech companies.",
+                "default_value": 1
             },
             headers={"Authorization": f"Bearer {token}"}
         )
@@ -409,6 +413,7 @@ async def test_relations_human_feedback(test_client, register_runtime, cleanup_r
             json={
                 "user": "testuser",
                 "content": "I am Alice, an ETH student. I study computer science and I want to connect to other students from ETH or workers from Big tech companies.",
+                "default_value": 1
             },
             headers={"Authorization": f"Bearer {token}"}
         )

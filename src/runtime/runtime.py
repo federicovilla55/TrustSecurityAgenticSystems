@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Optional, Dict
 from autogen_core import SingleThreadedAgentRuntime, AgentId, RoutedAgent
 from autogen_core.models import ChatCompletionClient
 import asyncio
@@ -49,24 +49,26 @@ class Runtime:
         print("Runtime Closed")
 
     @classmethod
-    async def register_orchestrator(cls, model_client: ChatCompletionClient):
+    async def register_orchestrator(cls, model_client: ChatCompletionClient, model_client_name : str):
         await OrchestratorAgent.register(
             cls._get_instance(),
             "orchestrator_agent",
             lambda: OrchestratorAgent(
                 model_client=model_client,
+                model_client_name=model_client_name,
             )
         )
 
         print("Orchestrator Registered")
 
     @classmethod
-    async def register_my_agent(cls, model_client: ChatCompletionClient):
+    async def register_my_agent(cls, model_client: ChatCompletionClient, model_clients : Dict[str, ChatCompletionClient]):
         await MyAgent.register(
             cls._get_instance(),
             "my_agent",
             lambda: MyAgent(
                 model_client=model_client,
+                processing_model_clients = model_clients
             )
         )
 
@@ -93,13 +95,14 @@ class Runtime:
         return answer.registered_agents
 
     @classmethod
-    def configure_runtime(cls, model_type : ModelType, model : str = None, temperature_my_agent : float = 0.5,
+    def configure_runtime(cls, model_type : ModelType, processing_model_clients : Dict[str, ChatCompletionClient],
+                          model : str = None, temperature_my_agent : float = 0.5,
                           temperature_orchestrator : float = 0.5) -> None:
         model_my_agent = get_model(model_type, model, temperature_my_agent)
         model_orchestrator = get_model(model_type, model, temperature_orchestrator)
 
-        asyncio.run(Runtime.register_my_agent(model_client=model_my_agent))
-        asyncio.run(Runtime.register_orchestrator(model_client=model_orchestrator))
+        asyncio.run(Runtime.register_my_agent(model_client=model_my_agent, model_clients=processing_model_clients))
+        asyncio.run(Runtime.register_orchestrator(model_client=model_orchestrator, model_client_name=model))
 
 
 def get_model(model_type : ModelType, model : Optional[str] = None, temperature : float = 0.5) -> ChatCompletionClient:
@@ -149,13 +152,13 @@ def get_model(model_type : ModelType, model : Optional[str] = None, temperature 
 
     return model_client
 
-async def register_agents(model_client : ChatCompletionClient):
-    await Runtime.register_my_agent(model_client=model_client)
-    await Runtime.register_orchestrator(model_client=model_client)
+async def register_agents(model_client : ChatCompletionClient, model_name : str, model_clients : Dict[str, ChatCompletionClient]):
+    await Runtime.register_my_agent(model_client=model_client, model_clients=model_clients)
+    await Runtime.register_orchestrator(model_client=model_client, model_client_name=model_name)
 
-async def register_orchestrator(model_client : ChatCompletionClient):
-    await Runtime.register_orchestrator(model_client=model_client)
+async def register_orchestrator(model_client : ChatCompletionClient, model_name : str):
+    await Runtime.register_orchestrator(model_client=model_client, model_client_name=model_name)
 
-async def register_my_agent(model_client : ChatCompletionClient):
-    await Runtime.register_my_agent(model_client=model_client)
+async def register_my_agent(model_client : ChatCompletionClient, model_clients : Dict[str, ChatCompletionClient]):
+    await Runtime.register_my_agent(model_client=model_client, model_clients=model_clients)
 

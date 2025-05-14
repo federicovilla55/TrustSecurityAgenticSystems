@@ -3,7 +3,6 @@ import time
 import pytest
 # pytest is not defined in the project requirements
 
-from src.agents import MyAgent, OrchestratorAgent
 from src.runtime import Runtime, get_model, register_orchestrator, register_my_agent
 from src.client import Client
 from src.models import *
@@ -23,8 +22,8 @@ async def test_agent_implementation():
     model_client_my_agent = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.7)
     model_client_orchestrator = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.5)
 
-    await register_my_agent(model_client_my_agent)
-    await register_orchestrator(model_client_orchestrator)
+    await register_my_agent(model_client_my_agent, {model_name : model_client_my_agent})
+    await register_orchestrator(model_client_orchestrator, model_name)
 
     print("Test Runtime Started.")
 
@@ -92,8 +91,8 @@ async def test_agent_implementation():
 
     print(relations_full.agents_relation_full)
 
-    assert(relations_full.agents_relation_full['Alice', 'Bob'][1] == Relation.USER_ACCEPTED)
-    assert(relations_full.agents_relation_full['Bob', 'Alice'][1] == Relation.USER_REFUSED)
+    assert(relations_full.agents_relation_full['Alice', 'Bob'][model_name][1] == Relation.USER_ACCEPTED)
+    assert(relations_full.agents_relation_full['Bob', 'Alice'][model_name][1] == Relation.USER_REFUSED)
 
     clear_database()
     close_database()

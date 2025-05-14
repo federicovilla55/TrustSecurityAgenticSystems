@@ -11,14 +11,30 @@ from src.database import get_database, get_user, log_event
 from src.enums import  Status, ActionType, Relation, RequestType
 
 from src.models import (UserInformation, SetupMessage, ConfigurationMessage, PairingRequest,
-                        PairingResponse, GetRequest, GetResponse)
+                        PairingResponse, GetRequest, GetResponse, ModelUpdate)
 from ..models.messages import ActionRequest, InitMessage
 
 from ..utils import extract_section, remove_chain_of_thought, separate_categories, extract_json
 
+
+def default_rules(value: int) -> str:
+    if value == 0:
+        return "Connect with anyone sharing common interests (e.g., hobbies, projects)."
+    elif value == 1:
+        return "Connect with users in the same industry (e.g., tech, healthcare)."
+    elif value == 2:
+        return "Connect only with users from the same organization/company."
+    elif value == 3:
+        return "Connect with users from the same organization AND similar job title/role (e.g., 'Senior Engineer at Microsoft')."
+    else:
+        return ""
+
+
 class MyAgent(RoutedAgent):
-    def __init__(self, model_client: ChatCompletionClient):
+    def __init__(self, model_client: ChatCompletionClient, processing_model_clients : [str, ChatCompletionClient] = {}):
         super().__init__("my_agent")
+        if processing_model_clients is None:
+            processing_model_clients = {}
         self._paused = False
         self._user = None
         self._private_information = None
@@ -39,6 +55,22 @@ class MyAgent(RoutedAgent):
         self.refused_agents : Set[str] = set()
 
         print(f"Created: {self._id}")
+
+        self._processing_model_clients: Dict[str, Tuple[bool, ChatCompletionClient]] = {
+            name: (True, client)
+            for name, client in processing_model_clients.items()
+        }
+
+    def update_model_clients(self, updates: Dict[str, bool]) -> None:
+        for model_name, new_bool in updates.items():
+            if model_name in self._processing_model_clients:
+                _, client = self._processing_model_clients[model_name]
+                self._processing_model_clients[model_name] = (new_bool, client)
+
+        print(f"Updated models: {self.get_model_clients()}")
+
+    def get_model_clients(self) -> Dict[str, bool]:
+        return {name: value[0] for name, value in self._processing_model_clients.items()}
 
     def get_public_information(self) -> str:
         """
@@ -77,25 +109,35 @@ class MyAgent(RoutedAgent):
                 self._public_information is not None or self._private_information is not None)
 
     async def evaluate_connection(self, context, prompt, requester : str) -> PairingResponse:
-        llm_answer = await self._model_client.create(
-            messages=[self._system_message, UserMessage(content=prompt, source=self._user),] +
-                      await self._model_context.get_messages() +
-                      await self._model_context_dict[requester].get_messages(),
-            cancellation_token=context.cancellation_token,
-        )
+        pairing_response_status: dict[str, Relation] = {}
+        result = ""
 
-        #print(f"{'*' * 20}\nPROMPT REQUEST: {[self._system_message, UserMessage(content=prompt, source=self._user),]}\n{'*' * 20}\n")
-        #print(f"{'-' * 20}\n{self.id} ANSWER: {llm_answer.content}\n{'-' * 20}\n")
+        for model_name, (is_active, model_client) in self._processing_model_clients.items():
+            if not is_active:
+                continue
 
-        result = remove_chain_of_thought(llm_answer.content)
+            llm_answer = await model_client.create(
+                messages=[self._system_message, UserMessage(content=prompt, source=self._user),] +
+                          await self._model_context.get_messages() +
+                          await self._model_context_dict[requester].get_messages(),
+                cancellation_token=context.cancellation_token,
+            )
 
-        if 'REJECT' in result.splitlines()[0].upper():
-            return PairingResponse(Relation.REFUSED, result.splitlines()[1:])
-        elif 'ACCEPT' in result.splitlines()[0].upper():
-            return PairingResponse(Relation.ACCEPTED, result.splitlines()[1:])
-        else:
-            print(f"ERROR: Unknown answer when handling pairing request...")
-            return PairingResponse(Relation.REFUSED, result)
+            #print(f"{'*' * 20}\nPROMPT REQUEST: {[self._system_message, UserMessage(content=prompt, source=self._user),]}\n{'*' * 20}\n")
+            #print(f"{'-' * 20}\n{self.id} ANSWER: {llm_answer.content}\n{'-' * 20}\n")
+
+            result = remove_chain_of_thought(llm_answer.content)
+            first_line = result.splitlines()[0].upper()
+
+            if 'REJECT' in first_line:
+                pairing_response_status[model_name] = Relation.REFUSED
+            elif 'ACCEPT' in first_line:
+                pairing_response_status[model_name] = Relation.ACCEPTED
+            else:
+                print(f"ERROR: Unknown answer from model {model_name}")
+                pairing_response_status[model_name] = Relation.REFUSED
+
+        return PairingResponse(pairing_response_status, result)
 
     async def notify_orchestrator(self, action_type : ActionType) -> Status:
         message = ActionRequest(
@@ -120,6 +162,7 @@ class MyAgent(RoutedAgent):
             return Status.REPEATED
         print("Handling Setup")
 
+        print(f"Default value: {message.default_value}")
 
         username = message.user
         self._user = message.user
@@ -148,6 +191,8 @@ class MyAgent(RoutedAgent):
                     - Exclude public personal information.
                     - Answer with a list of information provided by the user.
                     - Add precise context to each information to reduce uncertainty.
+                    USE THE FOLLOWING DEFAULT RULES:
+                    - {default_rules(message.default_value)}
                     
                     When answering, categorize your response into three sections using the following format:
                     **Public Information**:
@@ -272,12 +317,15 @@ class MyAgent(RoutedAgent):
                 public_information=self._public_information,
                 policies=self._policies,
                 private_information=self._private_information,
+                paused=self.is_paused()
             )
         )
 
         await self.publish_message(
             configuration_message, topic_id=TopicId("orchestrator_agent", "default")
         )
+
+        print("SETUP COMPLETED")
 
         return Status.COMPLETED
 
@@ -291,10 +339,16 @@ class MyAgent(RoutedAgent):
         """
         #print(f"'{self.id}' Received pairing request from '{message.user}'")
         if not self.is_setup() or self.is_paused():
-            return PairingResponse(Relation.UNCONTACTED.value, "MyAgent is paused or its setup is incomplete.")
+            return PairingResponse(
+                {model_name: Relation.UNCONTACTED.value for model_name in self._processing_model_clients.keys()},
+                "MyAgent is paused or its setup is incomplete."
+            )
 
         if message.receiver != "" and message.receiver != self._user:
-            return PairingResponse(Relation.UNCONTACTED, "MyAgent is not the correct receiver fot the message")
+            return PairingResponse(
+                {model_name: Relation.UNCONTACTED.value for model_name in self._processing_model_clients.keys()},
+                "MyAgent is not the correct receiver fot the message"
+            )
 
         if message.requester not in self._model_context_dict.keys():
             self._model_context_dict[message.requester] = BufferedChatCompletionContext(buffer_size=6)
@@ -322,7 +376,7 @@ class MyAgent(RoutedAgent):
         return response
 
     @message_handler
-    async def handle_get_request(self, message : GetRequest, context: MessageContext) -> UserInformation:
+    async def handle_get_request(self, message : GetRequest, context: MessageContext) -> UserInformation | GetResponse:
         """
         Handles an incoming get request asking for some of the user personal information.
         :param message: The get request containing the type of information requested.
@@ -333,6 +387,7 @@ class MyAgent(RoutedAgent):
             public_information={},
             private_information={},
             policies={},
+            paused=self.is_paused(),
             username=""
         )
 
@@ -350,8 +405,14 @@ class MyAgent(RoutedAgent):
             answer.public_information = self._public_information
             answer.private_information = self._private_information
             answer.policies = self._policies
+        elif RequestType(message.request_type) == RequestType.GET_MODELS:
+            return GetResponse(
+                request_type=RequestType.GET_MODELS,
+                models=self.get_model_clients(),
+            )
 
         return answer
+
 
     @message_handler
     async def handle_action_request(self, message : ActionRequest, context: MessageContext) -> Status:
@@ -377,8 +438,17 @@ class MyAgent(RoutedAgent):
                 self._private_information = None
                 operation = await self.notify_orchestrator(ActionType.DELETE_AGENT)
                 self._user = None
+            elif ActionType(message.request_type) == ActionType.RESET_AGENT:
+                self._paused = False
+                operation = await self.notify_orchestrator(ActionType.RESET_AGENT)
 
         return operation
+
+    @message_handler
+    async def update_model(self, message : ModelUpdate, context : MessageContext) -> Status:
+        self.update_model_clients(message.models)
+
+        return Status.COMPLETED
 
     @message_handler
     async def change_user_information(self, message : UserInformation, context : MessageContext) -> Status:
@@ -400,8 +470,19 @@ class MyAgent(RoutedAgent):
                 public_information=self._public_information,
                 policies=self._policies,
                 private_information=self._private_information,
+                paused=self.is_paused(),
             )
         )
+
+        if message.reset_connections:
+            new_conf_message = ConfigurationMessage(
+                user=self._user,
+                user_information=self._public_information,
+                user_policies=self._policies,
+            )
+            await self.publish_message(
+                new_conf_message, topic_id=TopicId("orchestrator_agent", "default")
+            )
 
 
         return Status.COMPLETED

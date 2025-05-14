@@ -11,22 +11,32 @@ from src.enums import Status
 from src.database import log_event
 from src.models import (ConfigurationMessage, PairingRequest, PairingResponse, GetRequest,
                         GetResponse, UserInformation, ActionRequest, FeedbackMessage)
-from src.enums import (json_pair, AgentRelations, AgentRelation_full,
+from src.enums import (json_pair, AgentRelations, AgentRelation_full, relation_triplet,
                        str_pair, RequestType, Relation, ActionType)
 
 @type_subscription(topic_type="orchestrator_agent")
 class OrchestratorAgent(RoutedAgent):
-    def __init__(self, model_client: ChatCompletionClient):
+    def __init__(self, model_client: ChatCompletionClient, model_client_name : str):
         super().__init__("orchestrator_agent")
         print(f"Created an Orchestrator: '{self.id}'")
 
         self._model_client = model_client
+        self._model_client_name = model_client_name
         self._registered_agents: Set[str] = set()
         self._paused_agents: Set[str] = set()
         self._agent_information: Dict[str, json_pair] = {}
         self._matched_agents: AgentRelation_full = {}
         self._model_context_dict : Dict[str_pair, BufferedChatCompletionContext] = {}
         self._agents_lock = asyncio.Lock()
+
+    async def get_public_information(self, requested_user : str) -> str:
+        public_information : dict = {}
+        async with self._agents_lock:
+            public_information = self._agent_information.get(requested_user)[0]
+
+        print(public_information)
+
+        return '\n'.join([item['content'] for item in public_information])
 
     async def pause_agent(self, agent_id : str) -> None:
         async with self._agents_lock:
@@ -36,6 +46,8 @@ class OrchestratorAgent(RoutedAgent):
             self._registered_agents.remove(agent_id)
             self._paused_agents.add(agent_id)
 
+        print("PAUSED: ", agent_id)
+
     async def resume_agent(self, agent_id : str) -> None:
         async with self._agents_lock:
             if agent_id not in self._paused_agents or agent_id in self._registered_agents:
@@ -44,12 +56,38 @@ class OrchestratorAgent(RoutedAgent):
             self._paused_agents.remove(agent_id)
             self._registered_agents.add(agent_id)
 
+        print("RESUME: ", agent_id)
+
     async def delete_agent(self, agent_id : str) -> None:
         async with self._agents_lock:
             if agent_id in self._paused_agents:
                 self._paused_agents.remove(agent_id)
             if agent_id in self._registered_agents:
                 self._registered_agents.remove(agent_id)
+
+        print("DELETE: ", agent_id)
+
+    async def reset_agent_pairings(self, agent_id : str) -> None:
+        print(f"Resetting {agent_id} pairings...")
+        async with self._agents_lock:
+            print(f"Previous matches {self._matched_agents} and registered {self._registered_agents}")
+            if not (agent_id in self._registered_agents or agent_id in self._paused_agents):
+                return
+
+        agents_relation_full = await self.get_matched_agents(full=True)
+
+        keys_to_remove = []
+        for key in agents_relation_full:
+            if agent_id in key[0] or agent_id in key[1]:
+                keys_to_remove.append(key)
+
+        print(f"Keys to remove: {keys_to_remove}")
+
+        async with self._agents_lock:
+            for key_pair in keys_to_remove:
+                del self._matched_agents[key_pair]
+
+            print(f"Updated connections: {self._matched_agents}")
 
     async def get_registered_agents(self) -> set[str]:
         async with self._agents_lock:
@@ -65,7 +103,7 @@ class OrchestratorAgent(RoutedAgent):
         matches : AgentRelations = {}
 
         for key, value in agent_made_matches.items():
-            matches[key] = value[0]
+            matches[key] = value[self._model_client_name][0]
 
         return matches
 
@@ -80,17 +118,68 @@ class OrchestratorAgent(RoutedAgent):
 
         return matches_for_agent
 
+    async def get_human_pending_requests(self, agent_id : str):
+        matches_copy = await self.get_matched_agents()
+
+        print(f"Current: {self._matched_agents}")
+
+        pending_requests : Dict[str, str] = {}
+
+        for agent_pair, relation in matches_copy.items():
+            if agent_id == agent_pair[0] and matches_copy[agent_pair] == Relation.ACCEPTED:
+                if matches_copy[(agent_pair[1], agent_pair[0])] == Relation.ACCEPTED:
+                    async with self._agents_lock:
+                        if self._matched_agents[agent_pair][self._model_client_name][1] != Relation.UNCONTACTED:
+                            continue
+
+                    pending_requests[agent_pair[1]] = await self.get_public_information(agent_pair[1])
+
+        print(f"Returning: {pending_requests}")
+
+        return pending_requests
+
+    async def get_established_relations(self, agent_id : str):
+        matches = await self.get_matched_agents(full=True)
+
+        print(f"Extracted {matches}")
+
+        pending_requests: Dict[str, str] = {}
+
+        for agent_pair, relation_triplet in matches.items():
+            relation_triplet = relation_triplet[self._model_client_name]
+            if agent_id == agent_pair[0] and relation_triplet[1] == Relation.USER_ACCEPTED:
+                if matches[(agent_pair[1], agent_pair[0])][self._model_client_name][1] == Relation.USER_ACCEPTED:
+                    pending_requests[agent_pair[1]] = await self.get_public_information(agent_pair[1])
+
+        print(f"ReturningE: {pending_requests}")
+
+        return pending_requests
+
+    async def get_unfeedback_relations(self, agent_id : str):
+        matches = await self.get_matched_agents()
+
+        pending_requests: Dict[str, str] = {}
+
+        for agent_pair, relation_triplet in matches.items():
+            if agent_id == agent_pair[0] and relation_triplet in [Relation.ACCEPTED, Relation.REFUSED]:
+                if matches[(agent_pair[1], agent_pair[0])] == Relation.UNCONTACTED:
+                    pending_requests[agent_pair[1]] = await self.get_public_information(agent_pair[1])
+
+        print(f"ReturningU: {pending_requests}")
+
+        return pending_requests
+
     async def get_agent_decision(self, sender : str, receiver : str) -> Relation:
         async with self._agents_lock:
-            return self._matched_agents[sender, receiver][0]
+            return self._matched_agents[sender, receiver][self._model_client_name][0]
 
     async def get_human_decision(self, sender : str, receiver : str) -> Relation:
         async with self._agents_lock:
-            return self._matched_agents[sender, receiver][1]
+            return self._matched_agents[sender, receiver][self._model_client_name][1]
 
     async def get_user_rules(self, sender: str, receiver: str) -> list:
         async with self._agents_lock:
-            return self._matched_agents[sender, receiver][2]
+            return self._matched_agents[sender, receiver][self._model_client_name][2]
 
     async def check_response(self, sender : str, receiver : str, sender_information : str, receiver_policies : str, reasoning : str) -> str:
         prompt = f"""
@@ -142,6 +231,7 @@ class OrchestratorAgent(RoutedAgent):
 
         # To Do: determine if the orchestrator should check the model answers.
         check_pairing = 'VALID'
+
         '''check_pairing = await self.check_response(
             sender, receiver, sender_public_information,
             receiver_policies, pair_response.reasoning
@@ -164,7 +254,7 @@ class OrchestratorAgent(RoutedAgent):
             data={
                 "requester": sender,
                 "receiver" : receiver,
-                "decision": pair_response.answer.value,
+                "decision": pair_response.answer,
                 "reasoning": pair_response.reasoning[:500]
             }
         )
@@ -173,14 +263,16 @@ class OrchestratorAgent(RoutedAgent):
             feedback = f"Previous agent Reasoning: {pair_response.reasoning}\nFEEDBACK: {check_pairing.splitlines()[1:]}"
         elif 'VALID' in check_pairing.splitlines()[0]:
             async with self._agents_lock:
-                self._matched_agents[(sender, receiver)] = (pair_response.answer, Relation.UNCONTACTED, [])
+                for key, value in pair_response.answer.items():
+                    self._matched_agents[(sender, receiver)][key] = (value, Relation.UNCONTACTED, [])
             return
         else:
             print(f"ERROR: Unknown answer when handling pairing request to {receiver} from {sender}...")
             return
 
         async with self._agents_lock:
-            self._matched_agents[(sender, receiver)] = (pair_response.answer, Relation.UNCONTACTED, [])
+            for key, value in pair_response.answer.items():
+                self._matched_agents[(sender, receiver)][key] = (value, Relation.UNCONTACTED, [])
 
     async def match_agents(self, user_to_add: str) -> None:
         registered_agents_copy = await self.get_registered_agents()
@@ -197,6 +289,8 @@ class OrchestratorAgent(RoutedAgent):
             if matched_agents_copy.get((registered_agent, user_to_add)) == Relation.UNCONTACTED:
                 await self.pair_agent_with_feedback(registered_agent, user_to_add)
 
+        print(f"PAIRINGS TERMINATED: {await self.get_matched_agents(full=True)}")
+
     @message_handler
     async def agent_configuration(self, message: ConfigurationMessage, context: MessageContext) -> None:
         async with self._agents_lock:
@@ -205,8 +299,9 @@ class OrchestratorAgent(RoutedAgent):
         if not registered and message.user == context.sender.key:
             for agent in self._registered_agents:
                 if self._matched_agents.get((agent, message.user)) is None:
-                    self._matched_agents[(agent, message.user)] = (Relation.UNCONTACTED, Relation.UNCONTACTED, [])
-                    self._matched_agents[(message.user, agent)] = (Relation.UNCONTACTED, Relation.UNCONTACTED, [])
+                    self._matched_agents[(agent, message.user)] : Dict[str, relation_triplet] = {}
+                    self._matched_agents[(agent, message.user)] = {self._model_client_name: (Relation.UNCONTACTED, Relation.UNCONTACTED, [])}
+                    self._matched_agents[(message.user, agent)] = {self._model_client_name: (Relation.UNCONTACTED, Relation.UNCONTACTED, [])}
 
             self._registered_agents.add(message.user)
             self._agent_information[message.user] = (message.user_information, message.user_policies)
@@ -235,6 +330,12 @@ class OrchestratorAgent(RoutedAgent):
             answer.registered_agents= await self.get_registered_agents()
         elif RequestType(message.request_type) == RequestType.GET_PERSONAL_RELATIONS:
             answer.agents_relation= await self.get_matches_for_agent(message.user)
+        elif RequestType(message.request_type) == RequestType.GET_PENDING_HUMAN_APPROVAL:
+            answer.users_and_public_info = await self.get_human_pending_requests(message.user)
+        elif RequestType(message.request_type) == RequestType.GET_ESTABLISHED_RELATIONS:
+            answer.users_and_public_info = await self.get_established_relations(message.user)
+        elif RequestType(message.request_type) == RequestType.GET_UNFEEDBACK_RELATIONS:
+            answer.users_and_public_info = await self.get_unfeedback_relations(message.user)
 
         return answer
 
@@ -245,6 +346,10 @@ class OrchestratorAgent(RoutedAgent):
         elif ActionType(message.request_type) == ActionType.RESUME_AGENT:
             await self.resume_agent(message.user)
         elif ActionType(message.request_type) == ActionType.DELETE_AGENT:
+            await self.reset_agent_pairings(message.user)
+            await self.delete_agent(message.user)
+        elif ActionType(message.request_type) == ActionType.RESET_AGENT:
+            await self.reset_agent_pairings(message.user)
             await self.delete_agent(message.user)
 
         await log_event(
@@ -256,15 +361,25 @@ class OrchestratorAgent(RoutedAgent):
         )
 
     @message_handler
-    async def human_in_the_loop(self, message : FeedbackMessage, context : MessageContext) -> Status:
+    async def human_in_the_loop(self, message: FeedbackMessage, context: MessageContext) -> Status:
         print("FEEDBACK RECEIVED!")
         async with self._agents_lock:
-            if self._matched_agents.get((message.sender, message.receiver)) is None:
+            key = (message.sender, message.receiver)
+            if key not in self._matched_agents:
+                print(f"No matching record found for {message.sender}->{message.receiver}")
                 return Status.FAILED
 
-            triplet = self._matched_agents[(message.sender, message.receiver)]
+            models_dict = self._matched_agents[key]
+            if not models_dict:
+                print("No models present to update.")
+                return Status.FAILED
 
-            self._matched_agents[(message.sender, message.receiver)] = (triplet[0], Relation(message.feedback), triplet[2])
+            for model_name, (orig_decision, _old_feedback, orig_policies) in list(models_dict.items()):
+                models_dict[model_name] = (
+                    orig_decision,
+                    Relation(message.feedback),
+                    orig_policies
+                )
 
         await log_event(
             event_type="human_feedback",

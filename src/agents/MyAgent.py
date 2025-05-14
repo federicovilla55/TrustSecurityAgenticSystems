@@ -18,17 +18,19 @@ from ..utils import extract_section, remove_chain_of_thought, separate_categorie
 
 
 def default_rules(value: int) -> str:
+    default_rule = "USE THE FOLLOWING DEFAULT RULES:\n- "
     if value == 0:
-        return "Connect with anyone sharing common interests (e.g., hobbies, projects)."
+        default_rule += "Connect with anyone sharing common interests (e.g., hobbies, projects)."
     elif value == 1:
-        return "Connect with users in the same industry (e.g., tech, healthcare)."
+        default_rule +=  "Connect with users in the same industry (e.g., tech, healthcare)."
     elif value == 2:
-        return "Connect only with users from the same organization/company."
+        default_rule +=  "Connect only with users from the same organization/company."
     elif value == 3:
-        return "Connect with users from the same organization AND similar job title/role (e.g., 'Senior Engineer at Microsoft')."
+        default_rule +=  "Connect with users from the same organization AND similar job title/role (e.g., 'Senior Engineer at Microsoft')."
     else:
-        return ""
+        default_rule = ""
 
+    return default_rule
 
 class MyAgent(RoutedAgent):
     def __init__(self, model_client: ChatCompletionClient, processing_model_clients : [str, ChatCompletionClient] = {}):
@@ -191,8 +193,7 @@ class MyAgent(RoutedAgent):
                     - Exclude public personal information.
                     - Answer with a list of information provided by the user.
                     - Add precise context to each information to reduce uncertainty.
-                    USE THE FOLLOWING DEFAULT RULES:
-                    - {default_rules(message.default_value)}
+                    {default_rules(message.default_value)}
                     
                     When answering, categorize your response into three sections using the following format:
                     **Public Information**:

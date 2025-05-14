@@ -1,18 +1,31 @@
 import json
 import re
 
-def remove_chain_of_thought(text):
+def remove_chain_of_thought(text) -> str:
+    """
+    A function to remove the chain of thought as generated from some LLM models from the given text.
+    :param text: A string containing the text to be processed.
+    :return: The text with the (eventual) chain of thought removed.
+    """
     return re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
 
-def extract_section(text, tag_string):
+def extract_section(text, tag_string) -> str:
     """
     Extracts the content within a specified XML-like section from the given text.
+    :param text: A string containing the text to be processed.
+    :param tag_string: A string representing the name of the section to be extracted.
+    :return:
     """
     match = re.search(fr'<{tag_string}>(.*?)/<{tag_string}>', text, flags=re.DOTALL)
     return match.group(1).strip() if match else ''
 
-def separate_categories(text):
-    # Define regex patterns to extract each category from the given text
+def separate_categories(text) -> tuple[str, str, str]:
+    """
+    Define regex patterns to extract each category from the given text, so public information, private information and policies.
+
+    :param text: A string containing the text to be processed and separated into the three categories.
+    :return: A tuple containing the three extracted categories (public information, private information and policies).
+    """
     public_pattern = r"\*\*Public Information\*\*:\s*(.*?)\s*(?=\*\*Private Information\*\*:|\Z)"
     private_pattern = r"\*\*Private Information\*\*:\s*(.*?)\s*(?=\*\*Policies\*\*:|\Z)"
     policies_pattern = r"\*\*Policies\*\*:\s*(.*)"

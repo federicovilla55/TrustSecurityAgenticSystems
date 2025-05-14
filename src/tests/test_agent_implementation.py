@@ -96,4 +96,3 @@ async def test_agent_implementation():
 
     clear_database()
     close_database()
-

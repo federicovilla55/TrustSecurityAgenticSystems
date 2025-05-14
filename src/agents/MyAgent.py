@@ -20,7 +20,7 @@ from ..utils import extract_section, remove_chain_of_thought, separate_categorie
 def default_rules(value: int) -> str:
     default_rule = "USE THE FOLLOWING DEFAULT RULES:\n- "
     if value == 0:
-        default_rule += "Connect with anyone sharing common interests (e.g., hobbies, projects)."
+        default_rule += "Connect with anyone sharing common interests (e.g., hobbies, projects) or similar job title/role."
     elif value == 1:
         default_rule +=  "Connect with users in the same industry (e.g., tech, healthcare)."
     elif value == 2:

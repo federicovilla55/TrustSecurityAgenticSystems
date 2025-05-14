@@ -13,7 +13,7 @@ class SetupMessage:
     """
     content: str
     user: str
-    default_value : int = 1
+    default_value : int = -1
 
 @dataclass
 class ConfigurationMessage:

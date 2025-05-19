@@ -32,11 +32,6 @@ jobs:
         run: |
           sphinx-build -b html docs/source docs/build/html
 
-      - name: Package docs
-        run: |
-          cd docs/build
-          tar -czf ../../html-docs-${{ github.ref_name }}.tar.gz html
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

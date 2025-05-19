@@ -22,9 +22,9 @@ async def configure_client(username: str, user_information: str) -> Client:
 async def create_datset() -> Dataset:
     """
     Create a synthetic dataset of users and their information. The dataset is created using LLMs
-     for their efficiency and ability to create diverse user profiles mitigating the privacy risks
-     associated with using real data.
-    :return:
+    for their efficiency and ability to create diverse user profiles mitigating the privacy risks
+    associated with using real data.
+    :return: A Dataset of users, their information and the agents they should pair with.
     """
     dataset: Dataset = {
         "Lisa-Keller": (

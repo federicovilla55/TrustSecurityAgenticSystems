@@ -1,0 +1,44 @@
+name: Build and Create documentation using Sphinx
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+    tags:
+      - '*'
+
+jobs:
+  build-docs:
+    name: Build HTML docs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install sphinx sphinx_rtd_theme
+
+      - name: Build HTML docs using Sphinx
+        run: |
+          sphinx-build -b html docs/source docs/build/html
+
+      - name: Package docs
+        run: |
+          cd docs/build
+          tar -czf ../../html-docs-${{ github.ref_name }}.tar.gz html
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-docs-${{ github.ref_name }}
+          path: html-docs-${{ github.ref_name }}.tar.gz

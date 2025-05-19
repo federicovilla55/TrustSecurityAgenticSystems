@@ -8,10 +8,10 @@ from src.runtime import Runtime, get_model, register_my_agent, register_orchestr
 
 async def run_setup():
     """
-    The function to run the main application using uvicorn, a python web framework
+    The function is called to run the main application's backend using `uvicorn`, a python web framework
     used to handle web connections from the browser or api client and allows
-    allows FastAPI to serve the actual request.
-    :return:
+     FastAPI to serve the actual request.
+    :return: None
     """
     try:
         uvicorn.run("src.main:app", host="0.0.0.0", port=8000, reload=True)

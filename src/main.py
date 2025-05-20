@@ -10,7 +10,7 @@ async def run_setup():
     """
     The function is called to run the main application's backend using `uvicorn`, a python web framework
     used to handle web connections from the browser or api client and allows
-     FastAPI to serve the actual request.
+    FastAPI to serve the actual request.
     :return: None
     """
     try:

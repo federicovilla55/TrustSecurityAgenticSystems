@@ -187,13 +187,13 @@ def compute_user_accuracy(relations: AgentRelation_full):
             accuracy = stats["correct"] / stats["total"] if stats["total"] > 0 else 0
             print(f"User {user}, Model {model}: Accuracy = {accuracy:.2%}")
 
-"""
-Tests for the LLM Score computation.
-The test generates 21 user (from synthentic LLM-generated data) and uses their pairing to compute a matching score for each user. 
-The matching score of each pairing is then used to compute a score for each model.
-"""
 @pytest.mark.asyncio
 async def test_llm_score():
+    """
+    Tests for the LLM Score computation.
+    The test generates 21 user (from synthentic LLM-generated data) and uses their pairing to compute a matching score for each user.
+    The matching score of each pairing is then used to compute a score for each model.
+    """
     init_database()
     Runtime.start_runtime()
 

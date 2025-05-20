@@ -1,48 +1,50 @@
-import json
-import time
-
 import pytest
 from fastapi.testclient import TestClient
 from ..fast_api.python_api import app, SECRET_KEY
 from src import Runtime, get_model, ModelType, register_agents, SetupMessage, Client, RequestType
 from src.database import clear_database, close_database
 from src.database import init_database
-from jose import jwt
-from datetime import datetime, timedelta
 from passlib.context import CryptContext
 import pytest_asyncio
-from enum import Enum
 import httpx
-from unittest.mock import MagicMock
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-class EnhancedJSONEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, Enum):
-            return o.value
-        return super().default(o)
-
 @pytest.fixture
 def test_client():
+    """
+    The fixture for the FastAPI test client.
+    It clears the database before each test and closes the database connection after each test.
+    :return: None
+    """
     clear_database()
     close_database()
-    yield TestClient(app)  # Ensure this yields the actual FastAPI app instance
+    yield TestClient(app)
 
-@pytest_asyncio.fixture(scope="function")  # Add function scope
+@pytest_asyncio.fixture(scope="function")
 async def register_runtime():
+    """
+    The fixture for registering the runtime.
+    The runtime is started and stopped before and after each test.
+    :return: None
+    """
     init_database()
     Runtime.start_runtime()
     try:
-        model_name = "meta-llama/Llama-3.3-70B-Instruct"
+        #model_name = "meta-llama/Llama-3.3-70B-Instruct"
+        model_name = "qwen2.5"
         model_client = get_model(model_type=ModelType.OLLAMA, model=model_name)
         await register_agents(model_client, model_name, {model_name : model_client})
     except Exception as e:
         print(f"Error during registration: {e}")
     yield
 
-@pytest_asyncio.fixture(scope="function")  # Add function scope
+@pytest_asyncio.fixture(scope="function")
 async def cleanup_runtime():
+    """
+    A fixture to clean up the runtime after each test.
+    :return:
+    """
     yield
     print("Cleaning up runtime")
     await Runtime.stop_runtime()
@@ -50,8 +52,14 @@ async def cleanup_runtime():
 
 
 
-# Synchronous test for authentication
 def test_authentication(test_client, register_runtime, cleanup_runtime):
+    """
+    A synchronous test for authentication. The test checks if the correct credentials are accepted and invalid credentials are rejected.
+    :param test_client: A FastAPI test client.
+    :param register_runtime: A fixture to register the runtime.
+    :param cleanup_runtime: A fixture to clean up the runtime after each test.
+    :return: None
+    """
     response = test_client.post("/api/register",
         json={
             "username": "testuser",
@@ -74,10 +82,16 @@ def test_authentication(test_client, register_runtime, cleanup_runtime):
     assert response.status_code == 401
 
 
-# Update test_protected_endpoints and test_agent_operations tests
-
 @pytest.mark.asyncio
 async def test_protected_endpoints(test_client, register_runtime, cleanup_runtime):
+    """
+    Tests that endpoints requiring authentication work correctly using a valid JWT token.
+
+    :param test_client: FastAPI TestClient used to make HTTP requests.
+    :param register_runtime: Fixture to initialize model runtime.
+    :param cleanup_runtime: Fixture to teardown model runtime.
+    :return: None
+    """
     # Use ASGITransport with the actual app instance
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         # Get token
@@ -113,6 +127,14 @@ async def test_protected_endpoints(test_client, register_runtime, cleanup_runtim
 
 @pytest.mark.asyncio
 async def test_agent_operations(test_client, register_runtime, cleanup_runtime):
+    """
+    Tests `ActionType` operations: `pause`, `resume`, and `delete`. So pausing, resuming, and deleting an agent.
+
+    :param test_client: FastAPI TestClient used to make HTTP requests.
+    :param register_runtime: Fixture to initialize model runtime.
+    :param cleanup_runtime: Fixture to teardown model runtime.
+    :return: None
+    """
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         # Authenticate
         response = await client.post("/api/register",
@@ -146,7 +168,14 @@ async def test_agent_operations(test_client, register_runtime, cleanup_runtime):
 
 @pytest.mark.asyncio
 async def test_agent_get_information(test_client, register_runtime, cleanup_runtime):
-    # Get valid token with correct credentials
+    """
+    Tests retrieval of user information from the FastAPI GET endpoints.
+
+    :param test_client: FastAPI TestClient used to make HTTP requests.
+    :param register_runtime: Fixture to initialize model runtime.
+    :param cleanup_runtime: Fixture to teardown model runtime.
+    :return: None
+    """
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post("/api/register",
              json={
@@ -217,7 +246,14 @@ async def test_agent_get_information(test_client, register_runtime, cleanup_runt
 
 @pytest.mark.asyncio
 async def test_agent_change_information(test_client, register_runtime, cleanup_runtime):
-    # Get valid token with correct credentials
+    """
+    Tests updating public information, private information and policies, and verifies the updates.
+
+    :param test_client: FastAPI TestClient used to make HTTP requests.
+    :param register_runtime: Fixture to initialize model runtime.
+    :param cleanup_runtime: Fixture to teardown model runtime.
+    :return: None
+    """
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post("/api/register",
              json={
@@ -303,6 +339,14 @@ async def test_agent_change_information(test_client, register_runtime, cleanup_r
 
 @pytest.mark.asyncio
 async def test_unchanged_setup_repeated(test_client, register_runtime, cleanup_runtime):
+    """
+    Tests that re-setting the same agent by invoking again the setup is correctly rejected and verifies that no information is lost or overwritten.
+
+    :param test_client: FastAPI TestClient used to make HTTP requests.
+    :param register_runtime: Fixture to initialize model runtime.
+    :param cleanup_runtime: Fixture to teardown model runtime.
+    :return: None
+    """
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post("/api/register",
              json={
@@ -395,6 +439,14 @@ async def test_unchanged_setup_repeated(test_client, register_runtime, cleanup_r
 
 @pytest.mark.asyncio
 async def test_relations_human_feedback(test_client, register_runtime, cleanup_runtime):
+    """
+    Tests the complete agent flow so registration, setup, updating information, retrieving relations, and submitting human feedback to a received pairing request.
+
+    :param test_client: FastAPI TestClient used to make HTTP requests.
+    :param register_runtime: Fixture to initialize model runtime.
+    :param cleanup_runtime: Fixture to teardown model runtime.
+    :return: None
+    """
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post("/api/register",
              json={

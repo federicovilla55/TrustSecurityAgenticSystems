@@ -23,12 +23,10 @@ class Client:
         self._token : Optional[str] = None
         self._client: Optional[httpx.AsyncClient] = None
 
-        print(f"Client Initialized: {self._username}")
-
     async def __aenter__(self):
         """
         Async context manager entry point. Used to initialize the asynchronous HTTP client.
-        :return: self
+        :return: None
         """
         self._client = httpx.AsyncClient()
         return self
@@ -37,8 +35,8 @@ class Client:
         """
         Called to explicitly initialize the personal agent.
         As in AutoGen agents are initialized automatically when the user sends a
-         message, this method is currently not used.
-        :return:
+        message, this method is currently not used.
+        :return: None
         """
         await Runtime.send_message(InitMessage(), "my_agent", self._username)
 

@@ -32,8 +32,23 @@ jobs:
         run: |
           sphinx-build -b html docs/source docs/build/html
 
-      - name: Upload artifact
+      - name: Archive built HTML as tar.gz
+        run: |
+          tar -czf html-docs-${{ github.ref_name }}.tar.gz -C docs/build/html .
+
+      - name: Archive built HTML as zip
+        run: |
+          cd docs/build/html
+          zip -r ../../html-docs-${{ github.ref_name }}.zip .
+
+      - name: Upload tar.gz artifact
         uses: actions/upload-artifact@v4
         with:
-          name: html-docs-${{ github.ref_name }}
+          name: html-docs-${{ github.ref_name }}-tar
           path: html-docs-${{ github.ref_name }}.tar.gz
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-docs-${{ github.ref_name }}-zip
+          path: html-docs-${{ github.ref_name }}.zip

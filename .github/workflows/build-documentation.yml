@@ -38,8 +38,7 @@ jobs:
 
       - name: Archive built HTML as zip
         run: |
-          cd docs/build/html
-          zip -r ../../html-docs-${{ github.ref_name }}.zip .
+          zip -r html-docs-${{ github.ref_name }}.zip docs/build/html
 
       - name: Upload tar.gz artifact
         uses: actions/upload-artifact@v4

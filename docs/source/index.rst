@@ -3,16 +3,13 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-TrustSecurityAgenticSystems documentation
-=========================================
+*Trust and Security of Agentic Systems* code documentation
+==========================================================
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
-
+Documentation for the **PairMe via MyAgent** platform of the *Trust and Security of Agentic Systems* project.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 5
    :caption: Contents:
 
    modules

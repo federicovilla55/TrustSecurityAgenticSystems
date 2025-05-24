@@ -428,6 +428,7 @@ class OrchestratorAgent(RoutedAgent):
         """
         The method is called when a new user is added in the platform to start the pairing process of it with the other agents registered in the system.
         The method is called by `agent_configuration` upon completing the registration in the OrchestratorAgent's data structures.
+        The method asynchronously sends a pairing request to the other agents registered in the system and stores the pairing responses in the orchestrator's data structures.
         :param user_to_add: The ID of the agent the orchestrator forwards it pairing request to the other agents.
         :return: None
         """
@@ -436,14 +437,18 @@ class OrchestratorAgent(RoutedAgent):
 
         matched_agents_copy : AgentRelations = await self.get_matched_personal_agents()
 
+        pairing_tasks = []
         for registered_agent in registered_agents_copy:
             # Do the already registered agents accept the pair with the new agent?
             if matched_agents_copy.get((user_to_add, registered_agent)) == Relation.UNCONTACTED:
-                await self.pair_agent_with_feedback(user_to_add, registered_agent)
+                pairing_tasks.append(self.pair_agent_with_feedback(user_to_add, registered_agent))
 
             # Does the new agent accept the pair with the already registered agent?
             if matched_agents_copy.get((registered_agent, user_to_add)) == Relation.UNCONTACTED:
-                await self.pair_agent_with_feedback(registered_agent, user_to_add)
+                pairing_tasks.append(self.pair_agent_with_feedback(registered_agent, user_to_add))
+
+        if pairing_tasks:
+            await asyncio.gather(*pairing_tasks)
 
         print(f"PAIRINGS TERMINATED: {await self.get_matched_agents_full()}")
 

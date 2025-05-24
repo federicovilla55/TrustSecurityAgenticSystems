@@ -41,27 +41,37 @@ TrustSecurityAgenticSystems/
 ├── README.md
 ├── requirements.txt
 ├── src/
-│   ├── __init__.py
-│   ├── agents/
-│   │   ├── __init__.py
-│   │   ├── MyAgent.py
-│   │   ├── OrchestratorAgent.py
-│   ├── models/
-│   │   ├── __init__.py
-│   │   ├── messages.py
-│   ├── runtime/
-│   │   ├── __init__.py
-│   │   ├── runtime.py
-│   ├── enums/
-│   │   ├── __init__.py
-│   │   ├── enums.py
-│   │   ├── custom_types.py
-│   ├── utils/
-│   │   ├── __init__.py
-│   │   ├── helpers.py
-│   ├── main.py
-│   ├── client.py
+│ ├── init.py
+│ ├── agents/
+│ │ ├── init.py
+│ │ ├── MyAgent.py
+│ │ ├── OrchestratorAgent.py
+│ ├── client.py
+│ ├── database/
+│ │ ├── init.py
+│ │ ├── database_logger.py
+│ ├── enums/
+│ │ ├── init.py
+│ │ ├── enums.py
+│ │ ├── custom_types.py
+│ ├── fast_api/
+│ │ ├── init.py
+│ │ ├── python_api.py
+│ ├── main.py
+│ ├── models/
+│ │ ├── init.py
+│ │ ├── messages.py
+│ ├── runtime/
+│ │ ├── init.py
+│ │ ├── runtime.py
+│ ├── utils/
+│ │ ├── init.py
+│ │ ├── helpers.py
+│ │ ├── log_helper.py
 ├── tests/
-│   ├── __init__.py
-│   ├── test_agent_implementation.py
+│ ├── init.py
+│ ├── test_agent_implementation.py
+│ ├── test_fast_api.py
+├── web/      # Web interface code
+├── docs/     # Code Documentation 
 ```

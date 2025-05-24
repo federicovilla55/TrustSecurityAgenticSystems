@@ -21,8 +21,8 @@ class OrchestratorAgent(RoutedAgent):
     This is the central agent of the multi-agent system: all the interactions between agents pass for the Orchestrator,
     which acts a middle-man between the agents, forwarding the messages from an agent to all the others.
     The central agent is responsible for managing the connections between agents and for the pairing process: when a new agent is created and
-    its setup is completed that agent contacts the orchestrator which forwards a pairing request from that agent to all the registered agents.
-    The Orchestrator is responsible for saving all the agents registered in the platfrorm, the users that paused their personal agent, the
+    its setup is completed, that agent contacts the orchestrator which forwards a pairing request from that agent to all the registered agents.
+    The Orchestrator is responsible for saving all the agents registered in the platform, the users that paused their personal agent, the
     public information of each agent and the pairing status of each agent.
     The orchestrator saves the feedback each user sends for the agent-established connections.
     """
@@ -32,17 +32,17 @@ class OrchestratorAgent(RoutedAgent):
         It initiates the OrchestratorAgent given a `model_client` and a `model_client_name`.
         The data structures used by the OrchestratorAgent are initialized in the method and they are:
         \n- _model_client: the model client used by the OrchestratorAgent to interact with the LLM.
-        \n- _model_client_name: the name of the LLM  the OrchestratorAgent uses.
+        \n- _model_client_name: the name of the LLM the OrchestratorAgent uses.
         \n- _registered_agents: a set of strings containing the agent IDs of the agents registered in the platform.
         \n- _paused_agents: a set of strings containing the agent IDs of the agents that are paused.
         \n- _agent_information: a dictionary containing the public information of each agent and the policies of each agent.
         \n- _matched_agents: a dictionary containing the pairing status of each agent.
-        \n- _model_context_dict: a dictionary containing the context of connection the OrchestratorAgent is supervisioning.
+        \n- _model_context_dict: a dictionary containing the context of each connection the OrchestratorAgent is checking.
         This dictionary contains links each pair of agent IDs to a `BufferedChatCompletionContext` which is used to keep tract
         of the LLM feedback the OrchestratorAgent's model gave upon evaluating the reasoning of the personal agent's LLM. This is used if the orchestrator acts
         as an active validator of the personal agent LLM reasoning.
         \n- _agents_lock: a lock used to synchronize the access to the data structures of the OrchestratorAgent.
-        :param model_client: A `ChatCompletionClient` object used to make the OrchestratorAgent interact with the LLM.
+        :param model_client: A `ChatCompletionClient` object is used to make the OrchestratorAgent interact with the LLM.
         The LLM is used by the orchestrator to evaluate the pairing response reasoning of the personal agent's LLM.
         :param model_client_name: A string containing the name of the LLM the OrchestratorAgent uses.
         """
@@ -194,7 +194,7 @@ class OrchestratorAgent(RoutedAgent):
 
     async def get_matches_for_agent(self, agent_id: str) -> AgentRelations:
         """
-        The method is used to get the pairings the agent its ID is specified as a paramter, `agent_id`, made.
+        The method is used to get the pairings the agent its ID is specified as a parameter, `agent_id`, made.
         :param agent_id: A string containing the ID of the agent whose pairings are requested.
         :return: A dictionary that maps for each couple of user ID, where the first or the second agent id is the `agent_id` parameter, to the personal agent's LLM decision.
         """
@@ -213,7 +213,7 @@ class OrchestratorAgent(RoutedAgent):
         The method returns given an `agent_id` the agent IDs and public information of the established connections,
         accepted by both personal agents, that are still left to be evaluated by the user whose is `agent_id`.
         The user should mark the connections returned by this method as correct or wrong.
-        :param agent_id: A string containing the ID of the agent whose agent-established pairing are requested.
+        :param agent_id: A string containing the ID of the agent whose agent-established pairings are requested.
         :return: A dictionary that maps each agent ID to its corresponding public information. The agent IDs in the dictionary are the users that both
         the personal agent of the requested (`agent_id`) and each of the personal agents of the users inside the dictionary accepted the pairing request.
         """
@@ -319,7 +319,7 @@ class OrchestratorAgent(RoutedAgent):
         :param sender_information: The public information of the `sender` agent.
         :param receiver_policies: The policies of the `receiver` agent.
         :param reasoning: The reasoning the `receiver` LLM made based on the requester public information and the personal policies.
-        :return: A string containing the orchestrator's LLM answer to the pairing request evaluation. Such answers determines if the pairing request the
+        :return: A string containing the orchestrator's LLM answer to the pairing request evaluation. Such an answer determines if the pairing request the
         orchestrator LLM was valid and therefore can be saved by the orchestrator ("VALID") or if it should be re-evaluated ("INVALID") and therefore
         feedback for the personal agent is provided.
         """
@@ -450,11 +450,11 @@ class OrchestratorAgent(RoutedAgent):
     @message_handler
     async def agent_configuration(self, message: ConfigurationMessage, context: MessageContext) -> None:
         """
-        This method is called by the personal agent after the setup is completed to notify the orchestrator that a new personal agent was correctly setupped.
+        This method is called by the personal agent after the setup is completed to notify the orchestrator that a new personal agent was correctly setup.
         This method registers the configured agent in the orchestrator data structures and starts the matching by calling `match_agents`.
         :param message: The `ConfigurationMessage` the personal agent sent the orchestrator containing the public information and policies the personal agent's LLM
         extracted from the user (natural language) configuration message.
-        :param context: The `MessageContext` object containing the contextual information about the message.
+        :param context: A `MessageContext` object containing the contextual information about the message.
         :return: None
         """
         async with self._agents_lock:
@@ -470,7 +470,7 @@ class OrchestratorAgent(RoutedAgent):
             self._registered_agents.add(message.user)
             self._agent_information[message.user] = (message.user_information, message.user_policies)
 
-            # in a more complex application maybe this could be scheduled as a background task: `asyncio.create_task`
+            # in a more complex application, maybe this could be scheduled as a background task: `asyncio.create_task`
             await self.match_agents(message.user)
             #return asyncio.create_task(self.match_agents(message.user))
 
@@ -522,8 +522,10 @@ class OrchestratorAgent(RoutedAgent):
     async def action_request(self, message : ActionRequest, context: MessageContext) -> None:
         """
         The method is called by the personal agent after an `ActionRequest` is received.
-        The `ActionRequest` message corresponds to an action the user sent its personal agent asking the agent to either be paused, deleted, resumed or resetted.
-        :param message: An `ActionRequest` message forwarder by the personal agent and regarding a change of state of that personal agent.
+        The `ActionRequest` message corresponds to an action the user sent its personal agent asking the agent to either be paused,
+        deleted, resumed or reset.
+        :param message: An `ActionRequest`
+        message forwarder by the personal agent and regarding a change of state of that personal agent.
         :param context: The `MessageContext` object contains the contextual information about the message.
         :return: None
         """
@@ -549,10 +551,10 @@ class OrchestratorAgent(RoutedAgent):
     @message_handler
     async def human_in_the_loop(self, message: FeedbackMessage, context: MessageContext) -> Status:
         """
-        The method is called by the personal agent after an `FeedbackMessage` is received.
+        The method is called by the personal agent after a `FeedbackMessage` is received.
         The method is called when a personal agent forwards the feedback a user provided on an established connection to be saved in the orchestrator structures.
         :param message: A `FeedbackMessage` sent by the personal agent and regarding a feedback provided by a user on a personal connection.
-        :param context: The `MessageContext` object containing the contextual information about the message.
+        :param context: A `MessageContext` object containing the contextual information about the message.
         :return: A status indicating whether the action was successful or not.
         """
         print("FEEDBACK RECEIVED!")

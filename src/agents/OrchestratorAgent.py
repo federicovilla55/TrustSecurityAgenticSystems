@@ -132,7 +132,7 @@ class OrchestratorAgent(RoutedAgent):
 
             del self._agent_information[agent_id]
 
-        agents_relation_full = await self.get_matched_agents(full=True)
+        agents_relation_full : AgentRelation_full = await self.get_matched_agents_full()
 
         keys_to_remove = []
         for key in agents_relation_full:
@@ -157,10 +157,9 @@ class OrchestratorAgent(RoutedAgent):
         async with self._agents_lock:
             return self._registered_agents.copy()
 
-    async def get_matched_agents(self, full : bool = False) -> AgentRelations | AgentRelation_full:
+    async def get_matched_personal_agents(self) -> AgentRelations:
         """
-        The method is called to get the pairings of each agent. This method should be called to get statistics of all
-        the connections made by the personal agents and the feedback the users provided.
+        The method is called to get the pairings of each agent as established by the personal agents LLMs.
         \nThe relations returned by this method are queried from the `_matched_agents` data structure, which maps for each couple of agent IDs (Relations are Directed, so for each pair `ID1`, `ID2` two entries are stored in the data structure, one for [`ID1`, `ID2`] and one for [`ID2`, `ID1`]).
         \nThe `_matched_agents` data structure is a dictionary of dictionaries, where:
         \n- the first key is the ID of the agent making the connection,
@@ -170,20 +169,10 @@ class OrchestratorAgent(RoutedAgent):
         \n\t- the second element is a `Relation` that stores the feedback the user gave regarding the connection.
         \n\t- the third element is a list of strings that contains the policies or the reasoning the personal agent LLM model gave regarding the connection.
 
-
-        \nAs all the information stored in `_matched_agents` might not be needed in all the scenarios, the `full` parameter can be used to return only the mapping of each agent to its corresponding personal agent evaluation.
-
-        :param full: A boolean value indicating whether to return the full data structure of the pairings or only the mapping of each agent to its corresponding personal agent evaluation.
-
-        :return: The method returns either:
-        \n- a dictionary that maps each agent pair to the corresponding personal agent LLM's decision.
-        \n- a dictionary of dictionaries that maps each agent pair to a map that maps each LLM the sender of that pairing request selected to the triplet containing the relation information for that pairing.
+        :return: A dictionary that maps each agent pair to the corresponding personal agent LLM's decision.
         """
         async with self._agents_lock:
             agent_made_matches = self._matched_agents.copy()
-
-        if full:
-            return agent_made_matches
 
         matches : AgentRelations = {}
 
@@ -192,13 +181,24 @@ class OrchestratorAgent(RoutedAgent):
 
         return matches
 
+    async def get_matched_agents_full(self) -> AgentRelation_full:
+        """
+        The method is called to get the full statistics of all the connections made by the personal agents and the feedback the users provided for each pairing and for each LLM used.
+        The method waits for the lock of the orchestrator agent and then returns a copy of the data structure containing all the user's connections.
+
+        :return: A dictionary of dictionaries that maps each agent pair to a map that maps each LLM the sender of that pairing request selected to the triplet containing the relation information for that pairing.
+        """
+        async with self._agents_lock:
+            return self._matched_agents.copy()
+
+
     async def get_matches_for_agent(self, agent_id: str) -> AgentRelations:
         """
         The method is used to get the pairings the agent its ID is specified as a paramter, `agent_id`, made.
         :param agent_id: A string containing the ID of the agent whose pairings are requested.
         :return: A dictionary that maps for each couple of user ID, where the first or the second agent id is the `agent_id` parameter, to the personal agent's LLM decision.
         """
-        matches_copy = await self.get_matched_agents()
+        matches_copy : AgentRelations = await self.get_matched_personal_agents()
 
         matches_for_agent : AgentRelations = {}
 
@@ -217,7 +217,7 @@ class OrchestratorAgent(RoutedAgent):
         :return: A dictionary that maps each agent ID to its corresponding public information. The agent IDs in the dictionary are the users that both
         the personal agent of the requested (`agent_id`) and each of the personal agents of the users inside the dictionary accepted the pairing request.
         """
-        matches_copy = await self.get_matched_agents()
+        matches_copy : AgentRelations = await self.get_matched_personal_agents()
 
         print(f"Current: {self._matched_agents}")
 
@@ -244,7 +244,7 @@ class OrchestratorAgent(RoutedAgent):
         :param agent_id: A string containing the user ID whose established pairing are requested.
         :return: A dictionary that maps each agent ID the user established a connection to, to the public information of that agent.
         """
-        matches = await self.get_matched_agents(full=True)
+        matches : AgentRelation_full = await self.get_matched_agents_full()
 
         print(f"Extracted {matches}")
 
@@ -266,7 +266,7 @@ class OrchestratorAgent(RoutedAgent):
         :param agent_id:
         :return:
         """
-        matches = await self.get_matched_agents()
+        matches : AgentRelations = await self.get_matched_personal_agents()
 
         pending_requests: Dict[str, str] = {}
 
@@ -434,10 +434,10 @@ class OrchestratorAgent(RoutedAgent):
         registered_agents_copy = await self.get_registered_agents()
         registered_agents_copy.remove(user_to_add)
 
-        matched_agents_copy = await self.get_matched_agents()
+        matched_agents_copy : AgentRelations = await self.get_matched_personal_agents()
 
         for registered_agent in registered_agents_copy:
-            # Does the already registered agents accept the pair with the new agent?
+            # Do the already registered agents accept the pair with the new agent?
             if matched_agents_copy.get((user_to_add, registered_agent)) == Relation.UNCONTACTED:
                 await self.pair_agent_with_feedback(user_to_add, registered_agent)
 
@@ -445,7 +445,7 @@ class OrchestratorAgent(RoutedAgent):
             if matched_agents_copy.get((registered_agent, user_to_add)) == Relation.UNCONTACTED:
                 await self.pair_agent_with_feedback(registered_agent, user_to_add)
 
-        print(f"PAIRINGS TERMINATED: {await self.get_matched_agents(full=True)}")
+        print(f"PAIRINGS TERMINATED: {await self.get_matched_agents_full()}")
 
     @message_handler
     async def agent_configuration(self, message: ConfigurationMessage, context: MessageContext) -> None:
@@ -502,9 +502,9 @@ class OrchestratorAgent(RoutedAgent):
         """
         answer = GetResponse(request_type=message.request_type)
         if RequestType(message.request_type) == RequestType.GET_AGENT_RELATIONS:
-            answer.agents_relation = await self.get_matched_agents()
+            answer.agents_relation = await self.get_matched_personal_agents()
         elif RequestType(message.request_type) == RequestType.GET_AGENT_RELATIONS_FULL:
-            answer.agents_relation_full = await self.get_matched_agents(full=True)
+            answer.agents_relation_full = await self.get_matched_agents_full()
         elif RequestType(message.request_type) == RequestType.GET_REGISTERED_AGENTS:
             answer.registered_agents= await self.get_registered_agents()
         elif RequestType(message.request_type) == RequestType.GET_PERSONAL_RELATIONS:

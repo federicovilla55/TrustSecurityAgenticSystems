@@ -1,3 +1,4 @@
+import asyncio
 import time
 
 import pytest
@@ -27,8 +28,10 @@ async def test_agent_implementation():
     model_client_my_agent = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.7)
     model_client_orchestrator = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.5)
 
-    await register_my_agent(model_client_my_agent, {model_name : model_client_my_agent})
-    await register_orchestrator(model_client_orchestrator, model_name)
+    tasks = []
+
+    tasks.append(register_my_agent(model_client_my_agent, {model_name : model_client_my_agent}))
+    tasks.append(register_orchestrator(model_client_orchestrator, model_name))
 
     print("Test Runtime Started.")
 
@@ -37,10 +40,13 @@ async def test_agent_implementation():
     charlie = Client("Charlie")
 
     # Some random user for
-    await alice.setup_user("I am Alice, an ETH student. I study computer science and I want to connect to other students from ETH or workers from Big tech companies.")
-    await bob.setup_user("I am Bob, an ETH student. I study cyber security and I want to connect to other students with similar interests or that study in my same university.")
-    await charlie.setup_user("I am Charlie, a researcher at Microsoft in Zurich. I enjoy running, competitive programming and studying artificial intelligence. I want to connect to people with my same interests or from my same organization")
+    tasks.append(alice.setup_user("I am Alice, an ETH student. I study computer science and I want to connect to other students from ETH or workers from Big tech companies."))
+    tasks.append(bob.setup_user("I am Bob, an ETH student. I study cyber security and I want to connect to other students with similar interests or that study in my same university."))
+    tasks.append(charlie.setup_user("I am Charlie, a researcher at Microsoft in Zurich. I enjoy running, competitive programming and studying artificial intelligence. I want to connect to people with my same interests or from my same organization"))
     #await david.setup_user("I am David, a UZH Finance student. I really like studying finance, especially personal finance. I like hiking and running. I want to connect to other people from Zurich or with similar interests.")
+
+    if tasks:
+        await asyncio.gather(*tasks)
 
     await Runtime.stop_runtime()
     Runtime.start_runtime()

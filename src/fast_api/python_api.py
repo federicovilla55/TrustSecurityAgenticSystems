@@ -25,60 +25,6 @@ from src.enums.enums import Status, ModelType
 from src.runtime import Runtime, get_model, register_my_agent, register_orchestrator
 from src.database import DATABASE_PATH, get_user, create_user, get_database, init_database, clear_database
 
-"""
-FastAPI Application
-
-Available Endpoints:
-
-1. **GET /**  
-   Root endpoint to confirm the server is running.
-
-2. **POST /api/register**  
-   Register a new user with a username and password.
-
-3. **POST /api/token**  
-   Login with username and password to receive an access token.
-
-4. **POST /api/setup**  
-   Setup a user’s personal agent with default values and setup information.
-
-5. **POST /api/change_information**  
-   Change public/private information and policies for a user.
-
-6. **GET /api/relations**  
-   Retrieve all relationships known by the user’s agent.
-
-7. **GET /api/get_pending_relations**  
-   Retrieve pending relationships awaiting user confirmation.
-
-8. **GET /api/get_established_relations**  
-   Retrieve confirmed and established relationships.
-
-9. **GET /api/get_agent_sent_decision**  
-   Get the decisions sent by the agent awaiting a response.
-
-10. **GET /api/get_agent_models**  
-    List LLM models available for use by the personal agent.
-
-11. **POST /api/update_models**  
-    Update the active/inactive status of available LLMs.
-
-12. **POST /api/pause**  
-    Pause the user’s personal agent.
-
-13. **POST /api/resume**  
-    Resume the user’s paused personal agent.
-
-14. **POST /api/delete**  
-    Delete the user’s personal agent.
-
-15. **POST /api/get_information**  
-    Retrieve specific user information based on request type (public, private, policies, all).
-
-16. **POST /api/feedback**  
-    Send feedback to another user based on a specific relationship.
-"""
-
 SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
 ALGORITHM = "HS256"
 TOKEN_DURATION = timedelta(hours=1)
@@ -88,8 +34,7 @@ clients = {}
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> None:
     """
-    The function is called when the FastAPI app starts.
-    The function starts the runtime and initializes the database.
+    The function is called when the FastAPI app starts. Database and runtime are intialized.
     :param app: The FastAPI app object.
     :return: None
     """
@@ -164,23 +109,16 @@ lock = asyncio.Lock()
 
 class Token(BaseModel):
     """
-    The Token class is used to define the schema of the token object.
-    A string representing the access token and a string representing the token type are saved.
+    The Token class is used to define the token as a string representing the access token and a string representing the token type.
     """
     access_token: str
     token_type: str
 
-class TokenData(BaseModel):
-    """
-    The TokenData class is used to define the schema of the token data object.
-    """
-    username: Optional[str] = None
-
 def create_access_token(data: dict) -> str:
     """
-    The function is called to create an access token given a data dictionary of information.
-    The token is created as a JWT with a specified expiration time from a specified secret key.
-    :param data: A data dictionary of user information.
+    The function is called to create an access token. The token is created as a JWT from a specified secret key.
+    
+    :param data: A dictionary with user information.
     :return: A string representing the access token.
     """
     to_encode = data.copy()
@@ -195,11 +133,10 @@ def create_access_token(data: dict) -> str:
 async def get_client(username : str) -> Client | None:
     """
     The function is called to get a client object given a username.
-    :param username: A string representing the username.
-    :return: A Client object or None if the username is not found in the clients dictionary.
-    """
 
-    # To Do: load clients from database.
+    :param username: A string representing the username.
+    :return: A Client object or `None` if the username is not found.
+    """
     async with lock:
         if username in clients:
             return clients[username]
@@ -209,8 +146,8 @@ async def get_client(username : str) -> Client | None:
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
     """
-    The function is called to get the current user given a token.
-    The method is called to ensure that the user sending the request is authenticated and has the right permissions and privileges.
+    The function is called to get the current user given a token. (This ensures that the user sending requests is authenticated and has the right permissions)
+
     :param token: A string representing the token.
     :return: A string representing the username the token is associated with.
     """
@@ -241,6 +178,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
 async def read_root():
     """
     The function is called to handle the root route.
+
     :return: A dictionary containing a message indicating that the root route was accessed.
     """
     return {"message": "Hello, world!"}
@@ -249,7 +187,8 @@ async def read_root():
 async def register(registration_data_json : dict) -> dict:
     """
     The function is called to register a new user.
-    :param registration_data_json: A dictionary containing the username and password of the new user.
+
+    :param registration_data_json: A dictionary containing the username and password for the new user.
     :return: A dictionary containing a message indicating that the user was registered successfully.
     """
     db = get_database()
@@ -277,6 +216,8 @@ async def register(registration_data_json : dict) -> dict:
 async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> dict:
     """
     The function is called to login a user given their username and password.
+    The function returns an access token that the user would then use to authenticate to other API endpoints.
+
     :param form_data: A OAuth2PasswordRequestForm object containing the username and password of the user.
     :return: A dictionary containing an access token and a token type.
     """
@@ -297,7 +238,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> dict:
 @router.post("/setup")
 async def setup_user(setup_json: dict, user_token_data: str = Depends(get_current_user)) -> dict:
     """
-    The function is called to setup a user and therefore create its corresponding personal agent.
+    The function is called to setup a user and calling the methods to call its corresponding personal agent.
+
     :param setup_json: A dictionary containing the username, setup string message, and chosen default policies value.
     :param user_token_data: A string representing the access token of the user.
     :return: A dictionary containing a message indicating that the user was setup successfully.
@@ -328,9 +270,10 @@ async def setup_user(setup_json: dict, user_token_data: str = Depends(get_curren
 async def change_information(information_json: dict, user_token_data: str = Depends(get_current_user)) -> dict:
     """
     The function is called to change the information of a user.
+
     :param information_json: A dictionary containing the new information of the user (personal information, private information, policies and reset flag).
     :param user_token_data: A string representing the access token of the user.
-    :return: A dictionary containing a message indicating that the information was changed successfully.
+    :return: A dictionary indicating that the information was changed successfully.
     """
     db = get_database()
     user = get_user(db, information_json["user"])
@@ -395,8 +338,9 @@ async def change_information(information_json: dict, user_token_data: str = Depe
 async def get_relations(current_user: str = Depends(get_current_user)) -> dict:
     """
     The function is called to get the relations of a user given its username.
+
     :param current_user: A string representing the username.
-    :return: A dictionary containing the full structure with the relations of the user.
+    :return: A dictionary containing the full relation data structure with the relations of the user.
     """
     client = await get_client(current_user)
 
@@ -410,12 +354,12 @@ async def get_relations(current_user: str = Depends(get_current_user)) -> dict:
 async def get_pending_relations(current_user: str = Depends(get_current_user)) -> dict:
     """
     The function is called to get the pending relations of a user given its username.
-    The pending relations are the personal relations accepted by both agents and awaiting user feedback.
+
     :param current_user: The username of the user.
     :return: A dictionary containing the pending relations of the user.
     """
     client = await get_client(current_user)
-    print("ENTERED GET PENDING RELATIONS")
+
 
     relations = await client.get_human_pending_relations()
 
@@ -428,6 +372,7 @@ async def get_established_relations(current_user: str = Depends(get_current_user
     """
     The function is called to get the established relations of a user given its username.
     The established relations are the personal relations accepted by both agents and confirmed by the user.
+
     :param current_user: The username of the user.
     :return: A dictionary containing the established relations of the user.
     """
@@ -442,9 +387,10 @@ async def get_established_relations(current_user: str = Depends(get_current_user
 @router.get("/get_agent_sent_decision")
 async def get_agent_sent_decision(current_user: str = Depends(get_current_user)) -> dict:
     """
-    The method is called to get the pairing decisions the personal agent sent, and the other agent hasn't responded yet, given the agent ID.
-    :param current_user: The username of the user, which corresponds to the agent ID of the personal agent.
-    :return: A dictionary containing the pairing decisions the personal agent sent and the other agent hasn't responded yet.
+    The method is called to get the pairings completed for the personal agent but not evaluated by the other agent.
+
+    :param current_user: The username of the user, corresponding to the agent ID of the personal agent.
+    :return: A dictionary containing the pairings incomplete for both personal agents.
     """
     client = await get_client(current_user)
 
@@ -457,26 +403,24 @@ async def get_agent_sent_decision(current_user: str = Depends(get_current_user))
 @router.get("/get_agent_models")
 async def get_agent_models(current_user: str = Depends(get_current_user)):
     """
-    The method is called to get the available LLMs that can be used by the personal agent the evaluate the pairings, given the agent ID.
-    :param current_user: The agent ID of the personal agent, which corresponds to the username of the user that created the personal agent.
+    The method is called to get the available LLMs that can be used by the personal agent to evaluate the pairings, given the agent ID.
+
+    :param current_user: The agent ID of the personal agent.
     :return: A dictionary mapping the LLM name to its status (active/inactive) depending on whether it is currently being used by the personal agent or not.
     """
     client = await get_client(current_user)
 
-    print(f"GOT MODEL REQUEST.")
-
     models = await client.get_models()
-
-    print(f"Model requested: {models}")
 
     return {'models':     [{"name": name, "active": active} for name, active in models.items()]}
 
 @router.post("/update_models")
 async def pause_agent(data : dict, current_user: str = Depends(get_current_user)):
     """
-    The method is called to update the available LLMs that can be used by the personal agent the evaluate the pairings, given the agent ID and a dictionary with the new models.
-    :param data: A dictionary mapping the LLM name to its status (active/inactive) depending on whether it is should be used by the personal agent or not to evaluate the pairings.
-    :param current_user: The agent ID of the personal agent, which corresponds to the username of the user that created the personal agent.
+    The method is called to update the available LLMs that can be used by the personal agent to evaluate the pairings, given the agent ID and a dictionary with the new models.
+
+    :param data: A dictionary mapping the LLM name to its status (active/inactive).
+    :param current_user: The agent ID of the personal agent.
     :return: A dictionary indicating that the models were updated successfully.
     """
     client = await get_client(current_user)
@@ -490,7 +434,8 @@ async def pause_agent(data : dict, current_user: str = Depends(get_current_user)
 async def pause_agent(current_user: str = Depends(get_current_user)):
     """
     The method is called to pause the personal agent, given the agent ID.
-    :param current_user: The agent ID of the personal agent which corresponds to the username of the user that requested the personal agent to be paused.
+
+    :param current_user: The agent ID of the personal agent.
     :return: A dictionary indicating that the personal agent was paused successfully.
     """
     client = await get_client(current_user)
@@ -509,7 +454,8 @@ async def pause_agent(current_user: str = Depends(get_current_user)):
 async def resume_agent(current_user: str = Depends(get_current_user)):
     """
     A method is called to resume the personal agent, given the agent ID.
-    :param current_user: The agent ID of the personal agent which corresponds to the username of the user that requested the personal agent to be resumed.
+
+    :param current_user: The agent ID of the personal agent.
     :return: A dictionary indicating that the personal agent was resumed successfully.
     """
     client = await get_client(current_user)
@@ -528,7 +474,8 @@ async def resume_agent(current_user: str = Depends(get_current_user)):
 async def delete_agent(current_user: str = Depends(get_current_user)):
     """
     A method is called to delete the personal agent, given the agent ID.
-    :param current_user: The agent ID of the personal agent which corresponds to the username of the user that requested the personal agent to be deleted.
+
+    :param current_user: The agent ID of the personal agent.
     :return: A dictionary indicating that the personal agent was deleted successfully.
     """
     client = await get_client(current_user)
@@ -548,8 +495,9 @@ async def delete_agent(current_user: str = Depends(get_current_user)):
 @router.post("/get_information")
 async def get_information(information : dict, current_user: str = Depends(get_current_user)):
     """
-    The method is called to get the information of a user, given the type of information to get.
-    :param information: A dictionary containing the type of information to get, in the field 'type'.
+    The method is called to get the information of a user, given the type of information to get (in the field 'type').
+
+    :param information: A dictionary containing the type of information to get (in the field 'type').
     :param current_user: The username of the user requesting the information.
     :return: A dictionary containing the requested information.
     """
@@ -579,9 +527,9 @@ async def get_information(information : dict, current_user: str = Depends(get_cu
 @router.post("/feedback")
 async def send_feedback(data : dict, current_user: str = Depends(get_current_user)):
     """
-    The method is called to send feedback to a user, given the receiver and the feedback.
-    :param data: A dictionary containing the receiver and the feedback for the pairing between the receiver and the sender of the feedback,
-    in the fields 'receiver' and 'feedback', respectively.
+    The method is called to send feedback for a pairing, given the receiver and the feedback. (The user sending it is retrieved from the access token)
+
+    :param data: A dictionary containing the receiver and the feedback for the pairing, in the fields 'receiver' and 'feedback', respectively.
     :param current_user: A string representing the username of the user sending the feedback.
     :return:
     """

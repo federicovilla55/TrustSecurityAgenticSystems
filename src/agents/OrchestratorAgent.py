@@ -505,14 +505,14 @@ class OrchestratorAgent(RoutedAgent):
         :param context: A `MessageContext` containing the message contextual information.
         :return: None
         """
-        if ActionType(message.request_type) == ActionType.PAUSE_AGENT:
+        if ActionType(message.action_type) == ActionType.PAUSE_AGENT:
             await self.pause_agent(message.user)
-        elif ActionType(message.request_type) == ActionType.RESUME_AGENT:
+        elif ActionType(message.action_type) == ActionType.RESUME_AGENT:
             await self.resume_agent(message.user)
-        elif ActionType(message.request_type) == ActionType.DELETE_AGENT:
+        elif ActionType(message.action_type) == ActionType.DELETE_AGENT:
             await self.reset_agent_pairings(message.user)
             await self.delete_agent(message.user)
-        elif ActionType(message.request_type) == ActionType.RESET_AGENT:
+        elif ActionType(message.action_type) == ActionType.RESET_AGENT:
             await self.reset_agent_pairings(message.user)
             await self.delete_agent(message.user)
 
@@ -520,7 +520,7 @@ class OrchestratorAgent(RoutedAgent):
             event_type="agent_status_change",
             source=message.user,
             data=ActionRequest(
-                request_type=message.request_type,
+                request_type=message.action_type,
             )
         )
 

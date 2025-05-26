@@ -10,13 +10,14 @@ import httpx
 class Client:
     """
     The Client class is the interface used by the user to interact with its personal agent
-    or the central (orchestrator) agent.
-    The user calls this class directly when it uses the FastAPI framework.
+    or directly with the central (orchestrator) agent.
+    The user calls this class when it accesses the FastAPI endpoints.
     """
 
     def __init__(self, username : str):
         """
         Client class constructor.
+
         :param username: Username of the user.
         """
         self._username = username
@@ -26,6 +27,7 @@ class Client:
     async def __aenter__(self):
         """
         Async context manager entry point. Used to initialize the asynchronous HTTP client.
+
         :return: None
         """
         self._client = httpx.AsyncClient()
@@ -36,6 +38,7 @@ class Client:
         Called to explicitly initialize the personal agent.
         As in AutoGen agents are initialized automatically when the user sends a
         message, this method is currently not used.
+
         :return: None
         """
         await Runtime.send_message(InitMessage(), "my_agent", self._username)
@@ -43,6 +46,7 @@ class Client:
     async def setup_user(self, user_content: str, default_value : int = 1) -> Status:
         """
         Method called to set up the personal agent by sending a `SetupMessage` with user-provided information.
+
         :param user_content: User-provided information.
         :param default_value: Value for the default user policies.
         :return: A status indicating whether the setup was successful or not.
@@ -52,6 +56,7 @@ class Client:
     async def pause_user(self) -> Status:
         """
         Method called to pause the personal agent by sending an `ActionRequest` with the PAUSE_AGENT action type.
+
         :return: A status indicating whether the setup was successful or not.
         """
         return await Runtime.send_message(
@@ -63,6 +68,7 @@ class Client:
     async def resume_user(self) -> Status:
         """
         Method called to resume the personal agent by sending an `ActionRequest` with the RESUME_AGENT action type.
+
         :return: A status indicating whether the setup was successful or not.
         """
         return await Runtime.send_message(
@@ -74,6 +80,7 @@ class Client:
     async def delete_user(self) -> Status:
         """
         Method called to delete the personal agent by sending an `ActionRequest` with the DELETE_AGENT action type.
+
         :return: A status indicating whether the setup was successful or not.
         """
         return await Runtime.send_message(
@@ -85,6 +92,7 @@ class Client:
     async def get_agent_all_relations(self) -> AgentRelations_PersonalAgents:
         """
         The method asks the orchestrator agent for the user's agent relations and returns them.
+
         :return: The agent relations established by the user.
         """
         matches : GetResponse = (
@@ -100,6 +108,7 @@ class Client:
         """
         This method asks the orchestrator agent for the user's relations that are completed, so in which both agents have
         decided for the pairings but the users have not expressed any feedback, and returns them.
+
         :return: A dictionary with a string pair containing the username of the two users in the un-feedback-ed relations.
         """
         matches : GetResponse = (
@@ -115,6 +124,7 @@ class Client:
         """
         The method asks the orchestrator agent for the user's established relations,
         so in which both agent and humans have approved it and returns them.
+
         :return: A dictionary containing a string pair with the couple of usernames the user is in pair with.
         """
         matches : GetResponse = (
@@ -129,6 +139,7 @@ class Client:
     async def get_agent_sent_decisions(self) -> Dict[str, str]:
         """
         This method returns the relations that the user has sent and that have not been answered yet by the other agent.
+
         :return: A dictionary containing a string pair with the couple of usernames the user sent a pairing request to.
         """
         matches : GetResponse = (
@@ -143,6 +154,7 @@ class Client:
     async def get_pairing(self) -> AgentRelations_PersonalAgents:
         """
         The method returns the relations the agents have made and that the humans have confirmed.
+
         :return: The agent relations established by the user.
         """
         pairings : GetResponse = (
@@ -156,9 +168,10 @@ class Client:
 
     async def get_agent_failed_relations(self):
         """
-        *Not Implemented*
+        *Not Implemented*:
         This method returns the relations that the user's agent has refused and therefore cannot be evaluated by the user.
-        Might be useful if the user wants to give a feedback to them too.
+        Might be useful if the user wants to give feedback to them too.
+
         :return:
         """
         pass
@@ -166,6 +179,7 @@ class Client:
     async def get_public_information(self) -> dict:
         """
         The method asks the personal agent for its public information and returns it.
+
         :return: A dictionary containing the public information of the user.
         """
         get_response : UserInformation = (
@@ -181,6 +195,7 @@ class Client:
     async def get_private_information(self) -> dict:
         """
         The method asks the personal agent for its private information and returns it.
+
         :return: A dictionary containing the private information of the user.
         """
         get_response : UserInformation = (
@@ -196,6 +211,7 @@ class Client:
     async def get_policies(self) -> dict:
         """
         The method asks the personal agent for its policies and returns it.
+
         :return: A dictionary containing the pairing policies of the user.
         """
         get_response : UserInformation = (
@@ -210,8 +226,9 @@ class Client:
     async def get_models(self) -> dict:
         """
         The method asks the personal agent for the available LLM models and returns them.
-        :return: A dictionary containing the available LLM models of the user.
-        In the dictionary the keys are the model names and the values are the model descriptions.
+
+        :return: A dictionary containing the available LLM models of the user. In
+                 the returned dictionary, the keys are the model names and the values are the model descriptions.
         """
         get_model_request = GetRequest(
             request_type=RequestType.GET_MODELS.value,
@@ -230,10 +247,11 @@ class Client:
     async def update_models(self, models : dict) -> Status:
         """
         The method is called to update the personal agent's available LLM models.
-        This method overwrites the previous available models so it should be called
-        with all the models the user is interested in using.
+        This method overwrites the previous available models so it should be called with the models parameters containing all
+        the LLMs the user is interested in using.
+
         :param models: A dictionary containing the available LLM models of the user.
-        The keys are the model names and the values are the model descriptions.
+                       The keys are the model names and the values are the model descriptions.
         :return: A status indicating whether the update was successful or not.
         """
         return await Runtime.send_message(
@@ -246,7 +264,8 @@ class Client:
         """
         The method is called to get all the user and user's agent information.
         That information is the policies, public information, private information,
-        whether the user's agent is setUp or not, and whether the user's agent is paused or not.
+        whether the user's agent is setup or not, and whether the user's agent is paused or not.
+
         :return: A dictionary containing the requested information.
         """
         get_response : UserInformation = (
@@ -269,6 +288,7 @@ class Client:
         """
         The method is called to change the user's policies, public information, private information.
         A boolean flag can be used to reset the user's previously made agent connections after changing the user information.
+
         :param public_information: A dictionary containing the public information of the user. The keys are the information names and the values are the information descriptions.
         :param private_information: A dictionary containing the private information of the user. The keys are the information names and the values are the information descriptions.
         :param policies: A dictionary containing the pairing policies of the user. The keys are the policy names and the values are the policy descriptions.
@@ -296,8 +316,9 @@ class Client:
 
     async def send_feedback(self, receiver : str, accepted : bool) -> Status:
         """
-        This method is called when a user sends a feedback for a pairing with the `receiver` agent.
+        This method is called when a user sends feedback for a pairing with the `receiver` agent.
         This method sends a message containing the feedback information to the orchestrator agent.
+
         :param receiver: The username of the other agent the user is sending the feedback to.
         :param accepted: A boolean flag indicating whether the human accepted the pairing or not.
         :return: A status indicating whether the feedback was sent successfully or not.
@@ -321,26 +342,29 @@ class Client:
 
     async def save_configuration(self):
         """
-        *Not Yet Implemented*
+        *Not Yet Implemented*:
         This method is called to save the user's configuration in a file or database to be later loaded and ensure persistency.
+
         :return: None
         """
         pass
 
     async def load_configuration(self):
         """
-        *Not Yet Implemented*
+        *Not Yet Implemented*:
         This method is called to load the user's configuration from a file or database.
+
         :return: None
         """
         pass
 
-    async def user_authentication(self, password: str):
+    async def user_authentication(self, password: str) -> None:
         """
         This method is called to authenticate the user with the fast api server
-        by calling the /token endpoint of the server to get a JWT token..
+        by calling the /token endpoint of the server to get a JWT token.
+
         :param password: The user password.
-        :return:
+        :return: None
         """
         # Call /token endpoint to get JWT
         async with httpx.AsyncClient() as client:
@@ -355,6 +379,7 @@ class Client:
     def headers(self) -> Dict[str, str]:
         """
         The property returns the headers needed to authenticate the user with the fast api server.
+
         :return: A dictionary containing the headers needed to authenticate the user with the fast api server.
         """
         return {"Authorization": f"Bearer {self._token}"}

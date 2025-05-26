@@ -8,8 +8,8 @@ from ..enums import (Relation, RequestType, AgentRelations_PersonalAgents, Compl
 @dataclass
 class SetupMessage:
     """
-    Message sent by a user to after creating the account to setup
-    his agent with the information the user sends and the preferences for pairing other agents
+    Message sent by a user to after creating an account to setup the personal agent with the information the user sends as a natural language message in `content`.
+    A value for the default policies to follow (determin how strict they are) could be selected. By default, no default policies will be applied.
     """
     content: str
     user: str
@@ -18,7 +18,7 @@ class SetupMessage:
 @dataclass
 class ConfigurationMessage:
     """
-    Message sent by an agent to the orchestration to forward the processed information the user first sent
+    Message sent by an agent to the orchestration to forward the processed information the user first sent.
     """
     user: str
     user_information: dict
@@ -27,8 +27,7 @@ class ConfigurationMessage:
 @dataclass
 class PairingRequest:
     """
-    Message sent by the orchestrator to an agent containing a pairing request for an agent
-    from another requester agent
+    Message sent by the orchestrator to an agent containing a pairing request for an agent from another requester agent
     """
     requester: str
     requester_information: str
@@ -38,8 +37,7 @@ class PairingRequest:
 @dataclass
 class PairingResponse:
     """
-    Message sent by the orchestrator an agent to the orchestrator containing a response
-    for a pairing request
+    Message sent by the orchestrator an agent to the orchestrator containing a response for a pairing request
     """
     answer: dict[str, Relation]
     reasoning: str
@@ -48,7 +46,7 @@ class PairingResponse:
 @dataclass
 class GetRequest:
     """
-    Request to get information from the orchestrator's data
+    Request to get information from the orchestrator's data structures.
     """
     request_type: RequestType
     user: str = ""
@@ -56,15 +54,15 @@ class GetRequest:
 @dataclass
 class ActionRequest:
     """
-    Request to get information from the orchestrator's data
+    Request to change the state of an agent following the type in `request_type`.
     """
-    request_type: ActionType
+    action_type: ActionType
     user: str = ""
 
 @dataclass
 class GetResponse:
     """
-    Answer to the orchestrator get request
+    Answer the orchestrator sends to the get requests it receives.
     """
     request_type: RequestType
     agents_relation: AgentRelations_PersonalAgents = None
@@ -72,12 +70,11 @@ class GetResponse:
     registered_agents: Set[str] = None
     users_and_public_info : Dict[str, str] = None
     models : dict[str, bool] = None
-    # more types should be added when the orchestrator will contain more information
 
 @dataclass
 class UserInformation:
     """
-    Message sent by the MyAgent, the personal agent, to the user
+    Message sent by the personal agent to the user with the personal information requested.
     """
     public_information: dict
     private_information: dict
@@ -97,13 +94,14 @@ class ModelUpdate:
 @dataclass
 class InitMessage:
     """
-    Message sent to create a MyAgent
+    An empty message sent to create/init a MyAgent.
+    The runtime sending this message to a non-existing agent will create it.
     """
 
 @dataclass
 class FeedbackMessage:
     """
-    Message sent by a user to the orchestrator containing the feedback on an evaluated connection.
+    Message sent by a user to the orchestrator containing the feedback on an evaluated pairing.
     """
     sender : str
     receiver : str

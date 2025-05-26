@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Optional, Set, Dict
 
 from .. import ActionType
-from ..enums import (Relation, RequestType, AgentRelations, AgentRelation_full)
+from ..enums import (Relation, RequestType, AgentRelations_PersonalAgents, CompleteAgentRelations)
 
 
 @dataclass
@@ -67,8 +67,8 @@ class GetResponse:
     Answer to the orchestrator get request
     """
     request_type: RequestType
-    agents_relation: AgentRelations = None
-    agents_relation_full: AgentRelation_full = None
+    agents_relation: AgentRelations_PersonalAgents = None
+    agents_relation_full: CompleteAgentRelations = None
     registered_agents: Set[str] = None
     users_and_public_info : Dict[str, str] = None
     models : dict[str, bool] = None

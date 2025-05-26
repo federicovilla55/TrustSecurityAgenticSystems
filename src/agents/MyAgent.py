@@ -158,7 +158,7 @@ class MyAgent(RoutedAgent):
         This method calls each of the LLMs selected to be used to evaluate the connection request and sends them the prompt
         containing the requester public information and the personal information (public, private and policies) of the agent.
         Each LLM's response is evaluated and the result is returned as a `PairingResponse` object.
-        :param context: The `MessageContext` object containing the contextual information about the message.
+        :param context: A `MessageContext` containing the message contextual information.
         :param prompt: The prompt containing the requester public information and the personal information (public, private and policies) of the agent.
         :param requester: The agent ID of the requester.
         :return: A PairingResponse object containing the response from each LLM model and the result of the evaluation.
@@ -213,7 +213,7 @@ class MyAgent(RoutedAgent):
         The method is called upon receiving an `InitMessage` from the user.
         The `InitMessage` is called as a user explicit request to create the agent.
         :param message: An (empty) InitMessage
-        :param context: The `MessageContext` object containing the contextual information about the message.
+        :param context: A `MessageContext` containing the message contextual information.
         :return: A `Status` object indicating whether the action was successful or not.
         """
         return Status.COMPLETED
@@ -232,7 +232,7 @@ class MyAgent(RoutedAgent):
         Upon splitting such personal information, the agent shares with the orchestrator the public information and policies, notifying the central agent about the
         successful personal agent creation and therefore starting the pairing process.
         :param message: The `SetupMessage` object containing the user's personal information, policies and default rule index.
-        :param context: A `MessageContext` object containing the contextual information about the message.
+        :param context: A `MessageContext` containing the message contextual information.
         :return: A `Status` object indicating whether the action was successful or not.
         """
 
@@ -524,7 +524,7 @@ class MyAgent(RoutedAgent):
         The method is called upon receiving a `ModelUpdate` message from the orchestrator. It is called
         when a user updates the list of LLMs to be used when evaluating a pairing requests.
         :param message: The `ModelUpdate` message containing the list of LLMs and a boolean value indicating whether the user wants to use the default LLMs or not.
-        :param context: The `MessageContext` object containing the contextual information about the message.
+        :param context: A `MessageContext` containing the message contextual information.
         :return: A `Status` object indicating whether the action was successful or not.
         """
         self.update_model_clients(message.models)
@@ -535,8 +535,8 @@ class MyAgent(RoutedAgent):
     async def change_user_information(self, message : UserInformation, context : MessageContext) -> Status:
         """
         Handles a request to change the public and private information and policies of the agent. This requests comes from the user directly modifying those policies or informations.
-        :param message: The `UserInformation` message containing the new public and private information and policies of the agent.
-        :param context: The `MessageContext` object containing the contextual information about the message.
+        :param message: The `UserInformation` message contains the new public and private information and policies of the agent.
+        :param context: A `MessageContext` containing the message contextual information.
         :return: A `Status` object indicating whether the action was successful or not.
         """
         self._policies = message.policies

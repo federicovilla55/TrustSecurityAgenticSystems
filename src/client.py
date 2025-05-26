@@ -2,7 +2,7 @@ from typing import Optional, Dict
 
 from src.models.messages import InitMessage, GetResponse
 from src.runtime import Runtime
-from src.enums import Status, ActionType, AgentRelations, RequestType, Relation
+from src.enums import Status, ActionType, AgentRelations_PersonalAgents, RequestType, Relation
 from src.models import (SetupMessage, ActionRequest, UserInformation,
                         GetRequest, FeedbackMessage, ModelUpdate)
 import httpx
@@ -82,7 +82,7 @@ class Client:
             agent_key=self._username
         )
 
-    async def get_agent_all_relations(self) -> AgentRelations:
+    async def get_agent_all_relations(self) -> AgentRelations_PersonalAgents:
         """
         The method asks the orchestrator agent for the user's agent relations and returns them.
         :return: The agent relations established by the user.
@@ -140,7 +140,7 @@ class Client:
 
         return matches.users_and_public_info
 
-    async def get_pairing(self) -> AgentRelations:
+    async def get_pairing(self) -> AgentRelations_PersonalAgents:
         """
         The method returns the relations the agents have made and that the humans have confirmed.
         :return: The agent relations established by the user.

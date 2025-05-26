@@ -522,20 +522,20 @@ class MyAgent(RoutedAgent):
         operation = Status.FAILED
 
         if self.is_setup() or True:
-            if ActionType(message.request_type) == ActionType.PAUSE_AGENT:
+            if ActionType(message.action_type) == ActionType.PAUSE_AGENT:
                 self._paused = True
                 operation = await self.notify_orchestrator(ActionType.PAUSE_AGENT)
-            elif ActionType(message.request_type) == ActionType.RESUME_AGENT:
+            elif ActionType(message.action_type) == ActionType.RESUME_AGENT:
                 self._paused = False
                 operation = await self.notify_orchestrator(ActionType.RESUME_AGENT)
-            elif ActionType(message.request_type) == ActionType.DELETE_AGENT:
+            elif ActionType(message.action_type) == ActionType.DELETE_AGENT:
                 self._paused = True
                 self._policies = None
                 self._public_information = None
                 self._private_information = None
                 operation = await self.notify_orchestrator(ActionType.DELETE_AGENT)
                 self._user = None
-            elif ActionType(message.request_type) == ActionType.RESET_AGENT:
+            elif ActionType(message.action_type) == ActionType.RESET_AGENT:
                 self._paused = False
                 operation = await self.notify_orchestrator(ActionType.RESET_AGENT)
 

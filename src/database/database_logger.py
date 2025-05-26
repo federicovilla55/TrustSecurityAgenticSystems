@@ -15,6 +15,7 @@ def init_database() -> None:
     \n- events_log: contains the events logged by the platform (This table is accessed and modified by the central agent, the orchestrator, upon sending or receiving a new message from the runtime).
     \n- users: contains the users registered on the platform and their hashed passwords (this table is accessed and modified by the FastAPI python module).
     \n- user_data: contains the public information, private information and policies of the users (this table is accessed and modified by the users' personal agents).
+
     :return: None
     """
     db = get_database()
@@ -55,6 +56,7 @@ def init_database() -> None:
 def get_database() -> sqlite3.Connection:
     """
     The function returns the database connection object.
+
     :return: A sqlite3.Connection object.
     """
     return sqlite3.connect(DATABASE_PATH)
@@ -62,6 +64,7 @@ def get_database() -> sqlite3.Connection:
 def create_user(db : sqlite3.Connection, username: str, hashed_password: str) -> None:
     """
     The function is called to create a new user in the database given the username and the hashed password.
+
     :param db: A sqlite3.Connection object.
     :param username: A string containing the username.
     :param hashed_password: A string containing the hashed password.
@@ -81,6 +84,7 @@ def create_user(db : sqlite3.Connection, username: str, hashed_password: str) ->
 def clear_database() -> None:
     """
     The function clears the database by deleting all the tables and their contents.
+
     :return: None
     """
     db = get_database()
@@ -103,7 +107,8 @@ def clear_database() -> None:
 
 def close_database() -> None:
     """
-    The function retirieves and closes the database connection.
+    The function retrieves and closes the database connection.
+
     :return: None
     """
     try:
@@ -115,6 +120,7 @@ def close_database() -> None:
 def get_user(db : sqlite3.Connection, username: str) -> tuple | None:
     """
     The function retrieves the user data from the database given the username.
+
     :param db: A sqlite3.Connection object.
     :param username: A string containing the username.
     :return: A tuple containing the user data or None if the user is not found.
@@ -133,9 +139,10 @@ def get_user(db : sqlite3.Connection, username: str) -> tuple | None:
 async def log_event(event_type: str, source: str, data: object) -> None:
     """
     The function logs the event specified in the parameters in the database.
-    The database is retireved using the get_database() function.
+    The database is retrieved using the get_database() function.
     The event is logged in the events_log table using the following SQL query: "INSERT INTO events_log (event_type, agent, timestamp, data) VALUES (?, ?, ?, ?)".
     The object is serialized to a JSON-serializable format using the serialize() function.
+
     :param event_type: A string containing the type of the event.
     :param source: A string containing the source of the event.
     :param data: A JSON-serializable object containing the data of the event.
@@ -146,6 +153,7 @@ async def log_event(event_type: str, source: str, data: object) -> None:
     def serialize(obj):
         """
         The function is a recursive serializer called to transform Python objects into JSON-serializable formats.
+
         :param obj: An object
         :return: JSON-serializable version of the `obj` object.
         """

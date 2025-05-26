@@ -21,9 +21,11 @@ async def configure_client(username: str, user_information: str) -> Client:
 
 async def create_datset() -> Dataset:
     """
-    Create a synthetic dataset of users and their information. The dataset is created using LLMs
-    for their efficiency and ability to create diverse user profiles mitigating the privacy risks
+    Create a synthetic dataset of users and their corresponding setup information.
+
+    The dataset is created using LLMs as an efficient way to create diverse user profiles mitigating the privacy risks
     associated with using real data.
+
     :return: A Dataset of users, their information and the agents they should pair with.
     """
     dataset: Dataset = {
@@ -150,7 +152,7 @@ def get_client(username: str, dataset : Dataset) -> Client:
 def get_feedback(sender : str, receiver : str, dataset : Dataset) -> bool:
     return receiver in dataset[sender][1]
 
-def compute_overall_accuracy(relations: AgentRelation_full):
+def compute_overall_accuracy(relations: CompleteAgentRelations):
     model_stats = {}
     for pair, model_dict in relations.items():
         for model, (model_rel, user_rel, _) in model_dict.items():
@@ -167,7 +169,7 @@ def compute_overall_accuracy(relations: AgentRelation_full):
         accuracy = stats["correct"] / stats["total"] if stats["total"] > 0 else 0
         print(f"Model {model}: Overall Accuracy = {accuracy:.2%}")
 
-def compute_user_accuracy(relations: AgentRelation_full):
+def compute_user_accuracy(relations: CompleteAgentRelations):
     user_stats = {}
     for (user, _), model_dict in relations.items():
         if user not in user_stats:

@@ -18,13 +18,15 @@ from ..utils import extract_section, remove_chain_of_thought, separate_categorie
 
 def default_rules(value: int) -> str:
     """
-    The function is a helper function to generate the default rules for the user.
-    :param value: A value indicating the default rule to be used. The possible values are: 0, 1, 2, 3.
-    \n- `0`: Connect with anyone sharing common interests (e.g., hobbies, projects) or similar job title/role.
-    \n- `1`: Connect with users in the same industry (e.g., tech, healthcare).
-    \n- `2`: Connect only with users from the same organization/company.
-    \n- `3`: Connect with users from the same organization AND similar job title/role (e.g., 'Senior Engineer at Microsoft').
-    \n- any other value: interpreted as the emtpy string "".
+    This is an helper function to generate the default rules for the user given a default rules value.
+
+    :param value: An integer value indicating the default rule to be included in the user policies.
+    \nThe possible default rules values are: 0, 1, 2, 3.
+    \n- `0`: Connect with anyone sharing common interests or with a similar job title/role.
+    \n- `1`: Connect with users in the same industry.
+    \n- `2`: Connect only with users from the same organization.
+    \n- `3`: Connect with users from the same organization AND similar job title/role.
+    \n- any other value: interpreted as the string `""`.
 
     :return: A string containing the default rule for the agent.
     """
@@ -44,24 +46,32 @@ def default_rules(value: int) -> str:
 
 class MyAgent(RoutedAgent):
     """
-    MyAgent class defines a personal agent, used by each user to connect with other users.
+    MyAgent class defines a personal agent, used by a corresponding user to connect with other users.
     The agent is defined as a subclass of the routed agent, the base AutoGen class used to create LLM-powered agents.
-    MyAgent is instructed to pair with other agents based on information its corresponding user provides.
+    MyAgent is instructed to pair with other personal agents based on information its corresponding user provides.
+
     The agent is registered at runtime and it is created by a user when completing the setup via a `SetupMessage`.
     The agent remains active until it is paused via a `PauseMessage` or deleted via a `DeleteMessage`.
-    The agent communicates with a central agent, the orchestrator, which shares the public information of the posisble pairing.
-    Each pairing request is evaluated by the agent's LLMs, and the agent accepts or rejects the connection based on each model's response.
+
+    The agent communicates with a central agent, the orchestrator, which shares the public information of the users for possible pairings.
+    Each pairing request is evaluated by the agent's LLMs (one or more, depending on how many the user selects),
+    and the agent accepts or rejects the connection based on each LLM's response.
+
     The information the agent uses to decide whether to accept or reject a connection is the user's public information,
-    private information and pairing policies and preferences.
+    private information and pairing policies/preferences. The policies can contain some pre-defined set of rules.
+
+    The information the user provides the agent is extracted by an LLM from a natural language text the user provides during the setup,
+    except for changes to such information done later by the user itself with a specific request.
     """
     def __init__(self, model_client: ChatCompletionClient, processing_model_clients : [str, ChatCompletionClient] = {}):
         """
         Personal Agent (MyAgent) constructor. This method initializes the MyAgent object and its attributes.
+
         :param model_client: A ChatCompletionClient object is used to interact with the LLM model.
-        This attribute is the main LLM model the agen will use to extract and divide user-provided information during the setup phase.
+                             This attribute is the main LLM model the agen will use to extract and divide user-provided information during the setup phase.
         :param processing_model_clients: A dictionary containing the names of LLMs and their corresponding ChatCompletionClient objects.
-        The LLMs inside the dictionary will be each used to evaluate the pairing requests sent by the orchestrator,
-        this enables to evaluate each LLM model independently.
+                                         The LLMs inside the dictionary will be each used to evaluate the pairing requests sent by the orchestrator,
+                                         this enables to evaluate each LLM model independently.
         """
 
         super().__init__("my_agent")
@@ -97,7 +107,8 @@ class MyAgent(RoutedAgent):
         """
         The method is used to update which LLMs to be used to evaluate the pairing requests sent by the orchestrator. The method provides
         for each model client name a boolean value indicating whether to use it or not.
-        :param updates: A dictionary containing the names of the LLMs and their corresponding boolean values, indicating whether to use them or not..
+
+        :param updates: A dictionary containing the names of the LLMs and their corresponding boolean values, indicating whether to use them or not.
         :return: None
         """
         for model_name, new_bool in updates.items():
@@ -111,29 +122,32 @@ class MyAgent(RoutedAgent):
         """
         The method is used to get the list of LLMs and their corresponding boolean values,
         indicating whether they are selected to be used to evaluate the pairing requests sent by the orchestrator.
+
         :return: A dictionary containing the names of the LLMs and their corresponding boolean values,
-        indicating whether they are selected to be used to evaluate the pairing requests sent by the orchestrator..
+        indicating whether they are selected to be used to evaluate the pairing requests sent by the orchestrator.
         """
         return {name: value[0] for name, value in self._processing_model_clients.items()}
 
     def get_public_information(self) -> str:
         """
         Returns a string containing the agent public information.
-        :return: A string containing the agent public information.
+
+        :return: A string containing the agent's public information.
         """
         return " ".join(item['content'] for item in self._public_information)
     
     def get_private_information(self) -> str:
         """
         Returns a string containing the agent private information.
-        :return: A string containing the agent private information.
+
+        :return: A string containing the agent's private information.
         """
         return " ".join(item['content'] for item in self._private_information)
 
     def get_policies(self) -> str:
         """
-        Returns a string containing the agent defined policies.
-        :return: A string containing the agent defined policies.
+        Returns a string containing the agent's policies.
+        :return: A string containing the agent's policies.
         """
         return " ".join(item['content'] for item in self._policies)
 
@@ -158,7 +172,8 @@ class MyAgent(RoutedAgent):
         This method calls each of the LLMs selected to be used to evaluate the connection request and sends them the prompt
         containing the requester public information and the personal information (public, private and policies) of the agent.
         Each LLM's response is evaluated and the result is returned as a `PairingResponse` object.
-        :param context: The `MessageContext` object containing the contextual information about the message.
+
+        :param context: A `MessageContext` containing the message contextual information.
         :param prompt: The prompt containing the requester public information and the personal information (public, private and policies) of the agent.
         :param requester: The agent ID of the requester.
         :return: A PairingResponse object containing the response from each LLM model and the result of the evaluation.
@@ -193,11 +208,12 @@ class MyAgent(RoutedAgent):
     async def notify_orchestrator(self, action_type : ActionType) -> Status:
         """
         The method is called upon receiving an action request from the user, so a request to either pause, resume or delete the agent.
-        :param action_type: An enum value indicating the type of action requested by the user (`PAUSE_AGENT`, `RESUME_AGENT`, `DELETE_AGENT`, `RESET_AGENT`).).
-        :return: A `Status` object indicating whether the action was successful or not.
+
+        :param action_type: An enum value indicating the type of action requested by the user (`PAUSE_AGENT`, `RESUME_AGENT`, `DELETE_AGENT`, `RESET_AGENT`).
+        :return: A `Status` object indicating the status of the method call (Completed/Failed).
         """
         message = ActionRequest(
-            request_type=action_type.value,
+            action_type=action_type.value,
             user=self._user,
         )
 
@@ -211,10 +227,12 @@ class MyAgent(RoutedAgent):
     async def handle_init(self, message: InitMessage, context: MessageContext) -> Status:
         """
         The method is called upon receiving an `InitMessage` from the user.
-        The `InitMessage` is called as a user explicit request to create the agent.
+        The `InitMessage` is a user explicit request to create the agent. It is an empty message and nothing is done in this method.
+        As for AutoGen framework, when a non-existing agent is the receiver of a message, its constructor is called and the agent is initialized.
+
         :param message: An (empty) InitMessage
-        :param context: The `MessageContext` object containing the contextual information about the message.
-        :return: A `Status` object indicating whether the action was successful or not.
+        :param context: A `MessageContext` containing the message contextual information.
+        :return: A `Status` object indicating the status of the method call (Completed/Failed).
         """
         return Status.COMPLETED
 
@@ -222,18 +240,20 @@ class MyAgent(RoutedAgent):
     async def handle_setup(self, message: SetupMessage, context: MessageContext) -> Status:
         """
         The method is called upon receiving a `SetupMessage` from the user.
-        The method is therefore called when a user provided a natural language description of their personal information and policies and therefore their
+        \nThe method is called when a user provides a natural language description of their personal information and policies and therefore their
         corresponding agent is created.
-        This message creates the personal agent if it was not previously created, therefore upon registering a user
-        calls the `setup_agent` method and creates the personal agent using this method.
-        In the `SetupMessage` public information, private information and policies are all provided as a single natural language string. Therefore
-        in this method the agent calls the main LLM, the one defined in `_init()_` and saved as `self._model_client`, to generate a JSON formatted
-        list containing public information, policies and private information splitted in three sections.
-        Upon splitting such personal information, the agent shares with the orchestrator the public information and policies, notifying the central agent about the
+
+        \nThis message creates the personal agent if it was not previously created and setups it, as upon receiving a `SetupMessage` the `setup_agent` method is called.
+
+        In the `SetupMessage` public information, private information and policies are all provided as a single natural language string. To extract them,
+        the agent calls the main (default) LLM, the one contained in `self._model_client`, to generate a JSON formatted
+        list containing public information, policies and private information split in three sections.
+        Upon splitting such personal information, the agent shares with the orchestrator only the public information and policies, notifying the central agent about the
         successful personal agent creation and therefore starting the pairing process.
+
         :param message: The `SetupMessage` object containing the user's personal information, policies and default rule index.
-        :param context: A `MessageContext` object containing the contextual information about the message.
-        :return: A `Status` object indicating whether the action was successful or not.
+        :param context: A `MessageContext` containing the message contextual information.
+        :return: A `Status` object indicating the status of the method call (Completed/Failed).
         """
 
         if self.is_setup():
@@ -244,7 +264,6 @@ class MyAgent(RoutedAgent):
         policies = None
         public_information = None
         private_information = None
-        #print(f"'{self.id}' Received setup message {message}")
 
         prompt_information = f"""
                     Extract ALL user policies from {self.id} message, following these rules:
@@ -406,12 +425,14 @@ class MyAgent(RoutedAgent):
     @message_handler
     async def handle_pairing_request(self, message: PairingRequest, context: MessageContext) -> PairingResponse:
         """
-        Handles an incoming pairing request and decides based on the sender public information and the receiver public and personal information and policies.
-        :param message: A pairing request send by the orchestrator on behalf of another MyAgent that wants to connect.
-        :param context:
+        Handles an incoming pairing request and, based on the sender public information and its public and personal information and policies, evaluates it.
+
+        :param message: A pairing request is sent by the orchestrator on behalf of another MyAgent that wants to connect.
+                        The received `PairingRequest` message contains the public information of the agents that wants to connect.
+        :param context: A `MessageContext` context object.
         :return: A `PairingResponse` object, containing a response to the pairing request.
         """
-        #print(f"'{self.id}' Received pairing request from '{message.user}'")
+
         if not self.is_setup() or self.is_paused():
             return PairingResponse(
                 {model_name: Relation.UNCONTACTED.value for model_name in self._processing_model_clients.keys()},
@@ -452,9 +473,10 @@ class MyAgent(RoutedAgent):
     @message_handler
     async def handle_get_request(self, message : GetRequest, context: MessageContext) -> UserInformation | GetResponse:
         """
-        Handles an incoming get request asking for some of the user personal information.
-        :param message: The get request containing the type of information requested.
-        :param context:
+        Handles an incoming get request asking for the user's personal information.
+
+        :param message: A `GetRequest` message containing the type of information requested.
+        :param context: A `MessageContext` context object.
         :return: The user information that was requested.
         """
         answer = UserInformation(
@@ -491,28 +513,29 @@ class MyAgent(RoutedAgent):
     @message_handler
     async def handle_action_request(self, message : ActionRequest, context: MessageContext) -> Status:
         """
-        Handles an incoming action request asking to either pause, resume or delete the agent.
-        :param message: The request containing the type of action the agent should do.
-        :param context:
+        The method handles an incoming action request upon receiving message`ActionRequest` asking to either pause, resume or delete the agent.
+
+        :param message: The request containing the type of action the agent should do, either pause, resume, delete or reset the personal agent.
+        :param context: A `MessageContext` containing the message contextual information.
         :return: A status, indicating if the operation was successfully done or not.
         """
         operation = Status.FAILED
 
         if self.is_setup() or True:
-            if ActionType(message.request_type) == ActionType.PAUSE_AGENT:
+            if ActionType(message.action_type) == ActionType.PAUSE_AGENT:
                 self._paused = True
                 operation = await self.notify_orchestrator(ActionType.PAUSE_AGENT)
-            elif ActionType(message.request_type) == ActionType.RESUME_AGENT:
+            elif ActionType(message.action_type) == ActionType.RESUME_AGENT:
                 self._paused = False
                 operation = await self.notify_orchestrator(ActionType.RESUME_AGENT)
-            elif ActionType(message.request_type) == ActionType.DELETE_AGENT:
+            elif ActionType(message.action_type) == ActionType.DELETE_AGENT:
                 self._paused = True
                 self._policies = None
                 self._public_information = None
                 self._private_information = None
                 operation = await self.notify_orchestrator(ActionType.DELETE_AGENT)
                 self._user = None
-            elif ActionType(message.request_type) == ActionType.RESET_AGENT:
+            elif ActionType(message.action_type) == ActionType.RESET_AGENT:
                 self._paused = False
                 operation = await self.notify_orchestrator(ActionType.RESET_AGENT)
 
@@ -521,11 +544,12 @@ class MyAgent(RoutedAgent):
     @message_handler
     async def update_model(self, message : ModelUpdate, context : MessageContext) -> Status:
         """
-        The method is called upon receiving a `ModelUpdate` message from the orchestrator. It is called
-        when a user updates the list of LLMs to be used when evaluating a pairing requests.
-        :param message: The `ModelUpdate` message containing the list of LLMs and a boolean value indicating whether the user wants to use the default LLMs or not.
-        :param context: The `MessageContext` object containing the contextual information about the message.
-        :return: A `Status` object indicating whether the action was successful or not.
+        The method is called upon receiving a `ModelUpdate` message from the orchestrator.
+        It is called when a user updates the list of LLMs to be called when the personal agent evaluates a pairing request.
+
+        :param message: A `ModelUpdate` message containing the list of LLMs and a boolean value indicating whether the user wants to use the default LLMs or not.
+        :param context: A `MessageContext` containing the message contextual information.
+        :return: A `Status` object indicating the status of the method call (Completed/Failed).
         """
         self.update_model_clients(message.models)
 
@@ -534,10 +558,12 @@ class MyAgent(RoutedAgent):
     @message_handler
     async def change_user_information(self, message : UserInformation, context : MessageContext) -> Status:
         """
-        Handles a request to change the public and private information and policies of the agent. This requests comes from the user directly modifying those policies or informations.
-        :param message: The `UserInformation` message containing the new public and private information and policies of the agent.
-        :param context: The `MessageContext` object containing the contextual information about the message.
-        :return: A `Status` object indicating whether the action was successful or not.
+        The method handles a `UserInformation` request asking to change the public and private information and policies of the agent.
+        The request comes directly from the user, upon interacting with the FastAPI endpoint.
+
+        :param message: The `UserInformation` message contains the new public and private information and policies of the agent.
+        :param context: A `MessageContext` containing the message contextual information.
+        :return: A `Status` object indicating the status of the method call (Completed/Failed).
         """
         self._policies = message.policies
         self._private_information = message.private_information

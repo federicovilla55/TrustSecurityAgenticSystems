@@ -18,6 +18,7 @@ to connect them without considering which connection are approved or refused.
 async def test_agent_implementation():
     """
     The test creates 3 agents and connects them. It then checks that all agents have been registered and that all agents have been in contact with each other.
+
     :return: None
     """
     init_database()
@@ -57,7 +58,8 @@ async def test_agent_implementation():
     await alice.send_feedback('Bob', True)
     await bob.send_feedback( 'Alice', False)
 
-    relations_full = await Runtime.send_message(GetRequest(request_type=RequestType.GET_AGENT_RELATIONS_FULL.value), agent_type="orchestrator_agent")
+    complete_relations : CompleteAgentRelations \
+        = await Runtime.send_message(GetRequest(request_type=RequestType.GET_AGENT_RELATIONS_FULL.value), agent_type="orchestrator_agent")
 
     await Runtime.stop_runtime()
 
@@ -100,10 +102,13 @@ async def test_agent_implementation():
                 connections.append(b)
         print(f"- {agent} : {', '.join(connections)}")
 
-    print(relations_full.agents_relation_full)
+    assert(
+        Relation(complete_relations.agents_relation_full['Alice', 'Bob'][1]) == Relation.USER_ACCEPTED
+    )
 
-    assert(relations_full.agents_relation_full['Alice', 'Bob'][model_name][1] == Relation.USER_ACCEPTED)
-    assert(relations_full.agents_relation_full['Bob', 'Alice'][model_name][1] == Relation.USER_REFUSED)
+    assert(
+        Relation(complete_relations.agents_relation_full['Bob', 'Alice'][1]) == Relation.USER_REFUSED
+   )
 
     clear_database()
     close_database()

@@ -6,6 +6,7 @@ from .enums import Relation
 
 #: A tuple of two strings. The Tuple is used in various data structures to identify a couple of personal agent IDs.
 #: This custom type is used when dealing with the bidirectional agent pairings that need to be saved in dictionaries, and the agent IDs order matters.
+# Agent pairs are considered bidirectional, meaning that in data structure the couple ['ID1', 'ID2'] points to different data than the couple ['ID2', 'ID1'].
 str_pair = Tuple[str, str]
 
 #: A tuple of two JSON-compatible dictionaries, representing the information agents share with the central orchestrator: the public information and the policies.
@@ -13,22 +14,29 @@ str_pair = Tuple[str, str]
 #: this data type is used to store such information.
 json_pair = Tuple[dict, dict]
 
-#: A triplet representing:
-#: - The pairing answer, Relation enum, chosen by the agent,
-#: - The Relation enum provided by the user via feedback,
-#: - A list of policies (as strings) the personal agent's LLM used to make its decision (the first element of the tuple).
-relation_triplet = Tuple[Relation, Relation, list]
+#: The Relationship information determined by a personal agent for a couple of users.
+#: Each personal agent calls the LLM API to determine the pairings and saves both the Relation enumeration containing the
+#: relationship status and a list containing the policies used to determine the pairing.
+#: This data structure is the value of dictionaries where the key is represented by a string representing the LLM name, as the information
+#: in the data structure is specific per an agent IDs pair and LLM model name.
+RelationPersonalAgent = Tuple[Relation, list]
 
-#: A mapping from a string pair, a pair of personal agnet IDs, to the Relation assigned by the personal agent's LLM.
+#: The data structure consist in a dictionary linking each LLM used by a personal agent, to the pairing information that LLM created, so the relation status and list of policies/information used.
+#: The data structure contains a dictionary, saved by the orchestrator for each pair of users.
+LLMRelations = Dict[str, RelationPersonalAgent]
+
+#: The data structure consist in a tuple containing a `LLMRelations` data type and a `Relation` data type.
+#: Those types are used by the orchestrator to save, for a certain agent ID pair, both the personal agent evaluation and the eventual feedback
+#: (saved as the tuple's second element).
+RelationComplete = Tuple[LLMRelations, Relation]
+
+#: The data structure consist in a dictionary mapping a string pair, such as a pair of personal agent IDs,
+#: to a `Relation` enum consisting in the personal agent's (default) LLM evaluation.
 #: The type is used to query a smaller subset of the information about pairings the orchestrator saved.
-AgentRelations = Dict[str_pair, Relation]
+AgentRelations_PersonalAgents = Dict[str_pair, Relation]
 
-#: The type used by the orchestrator data structure to save the information about user pairings.
-#: This type maps each pair of agent IDs to a dictionary that maps each LLM model used to the relation tripled data type.
-#: This double mapping is necessary as users can select a multiple LLMs and use them to evaluate the same pairing requests
-#: and therefore determine the accuracy of each model. Therefore to easily query the LLMs result on the same pairings this data type is used.
-#: The data type focuses on keeping the user feedback and the pairing score near all the LLMs.
-AgentRelation_full = Dict[str_pair, Dict[str, relation_triplet]]
-
-# One possible imporvement is to save only once the relation feedback and therefore instead of having a triplet, save a Dictionary that maps the string pair
-# to a tuple containing the user feedback and another tuple with the map mapping each LLM to the pairing result and list of policies used.
+#: The Orchestrator uses the data structure to save the complete information about the users' relationships.
+#: The data structure consists in a dictionary mapping each string pair, so each couple of agent IDs, to a `RelationComplete`
+#: data type, which consists in the complete information regarding the users' relationships, so both the personal agent evaluation (for each LLM selected)
+#: and the feedback the user might have provided.
+CompleteAgentRelations = Dict[str_pair, RelationComplete]

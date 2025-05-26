@@ -46,17 +46,22 @@ def default_rules(value: int) -> str:
 
 class MyAgent(RoutedAgent):
     """
-    MyAgent class defines a personal agent, used a corresponding user to connect with other users.
+    MyAgent class defines a personal agent, used by a corresponding user to connect with other users.
     The agent is defined as a subclass of the routed agent, the base AutoGen class used to create LLM-powered agents.
-    MyAgent is instructed to pair with other agents based on information its corresponding user provides.
+    MyAgent is instructed to pair with other personal agents based on information its corresponding user provides.
+
     The agent is registered at runtime and it is created by a user when completing the setup via a `SetupMessage`.
     The agent remains active until it is paused via a `PauseMessage` or deleted via a `DeleteMessage`.
+
     The agent communicates with a central agent, the orchestrator, which shares the public information of the users for possible pairings.
     Each pairing request is evaluated by the agent's LLMs (one or more, depending on how many the user selects),
-    and the agent accepts or rejects the connection based on each model's response.
-    The information the agent uses to decide whether to accept or reject a connection is the user's public information,
-    private information and pairing policies and preferences. This information is included with a pre-defined set of rules
-    and a prompt with all such information is created and sent to each LLM for an evaluation.
+    and the agent accepts or rejects the connection based on each LLM's response.
+
+    The information the agent uses to decide whether to accept or reject a connection are the user's public information,
+    private information and pairing policies/preferences. The policies can contain some pre-defined set of rules.
+
+    The information the user provides the agent is extracted by an LLM from a natural language text the user provides during the setup,
+    except for changes to such information done later by the user itself with a specific request.
     """
     def __init__(self, model_client: ChatCompletionClient, processing_model_clients : [str, ChatCompletionClient] = {}):
         """

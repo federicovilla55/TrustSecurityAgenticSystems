@@ -299,7 +299,8 @@ class OrchestratorAgent(RoutedAgent):
         :param sender_information: The public information of the `sender`.
         :param receiver_policies: The policies of the `receiver`.
         :param reasoning: The reasoning the `receiver` LLM made based.
-        :return: A string containing the orchestrator's LLM answer. It should be considered valid if ("VALID") or it should be re-evaluated if ("INVALID").
+        :return: A string containing the orchestrator's LLM answer to the pairing evaluation.
+                 It should be considered valid if ("VALID") and consequently saved, or it should be re-evaluated if ("INVALID").
         """
         prompt = f"""
                 You are the Policy Enforcement Orchestrator. Your job is to evaluate the reasoning {receiver} made on the policies.
@@ -333,7 +334,8 @@ class OrchestratorAgent(RoutedAgent):
 
         :param sender: A string containing the agent ID of the agent sending the pairing request.
         :param receiver: A string containing the agent ID of the agent that receives the public information of the sender agent and uses it along with
-               its personal information to call its LLM and evaluate it. Its LLM answer might be evaluated by the orchestrator agent, if it checks the request actively (should be specified in settings).
+               its personal information to call its LLM and evaluate it.
+               Its LLM answer might be evaluated by the orchestrator agent if the orchestrator is setupped to check the request actively.
         :return: None
         """
         feedback = ""
@@ -406,7 +408,7 @@ class OrchestratorAgent(RoutedAgent):
         For each user previously registered, a pairing request message is sent with the public information of the new user and a corresponding
         pairing request is sent to the new agent with the public information of all the agents previously registered in the platform.
 
-        :param user_to_add: The ID of a new agent to sends the pairing request to.
+        :param user_to_add: The ID of a new agent to send the pairing request to.
         :return: None
         """
         registered_agents_copy = await self.get_registered_agents()
@@ -498,8 +500,10 @@ class OrchestratorAgent(RoutedAgent):
     async def action_request(self, message : ActionRequest, context: MessageContext) -> None:
         """
         The method is called upon receiving an `ActionRequest` message. The message is sent by a personal agent, after it receives a request
-        to pause, resume, delete or reset its personal agent. As the orchestrator contains information by that agent, such request is forwarder to the orchestrator as well
-        so that it can change its data structures and keep consistencies between agents.
+        to pause, resume, delete or reset its personal agent.
+
+        As the orchestrator contains in its data structure information by that agent that might become inconsistent, the `ActionRequest`
+        is forwarder to the orchestrator so that it can change its data structures and keep consistencies between agents.
 
         :param message: An `ActionRequest` containing a user request to change its personal agent state.
         :param context: A `MessageContext` containing the message contextual information.
@@ -520,7 +524,7 @@ class OrchestratorAgent(RoutedAgent):
             event_type="agent_status_change",
             source=message.user,
             data=ActionRequest(
-                request_type=message.action_type,
+                action_type=message.action_type,
             )
         )
 

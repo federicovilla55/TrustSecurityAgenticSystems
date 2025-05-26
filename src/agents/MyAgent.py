@@ -26,7 +26,7 @@ def default_rules(value: int) -> str:
     \n- `1`: Connect with users in the same industry.
     \n- `2`: Connect only with users from the same organization.
     \n- `3`: Connect with users from the same organization AND similar job title/role.
-    \n- any other value: interpreted as the an string `""`.
+    \n- any other value: interpreted as the string `""`.
 
     :return: A string containing the default rule for the agent.
     """
@@ -57,7 +57,7 @@ class MyAgent(RoutedAgent):
     Each pairing request is evaluated by the agent's LLMs (one or more, depending on how many the user selects),
     and the agent accepts or rejects the connection based on each LLM's response.
 
-    The information the agent uses to decide whether to accept or reject a connection are the user's public information,
+    The information the agent uses to decide whether to accept or reject a connection is the user's public information,
     private information and pairing policies/preferences. The policies can contain some pre-defined set of rules.
 
     The information the user provides the agent is extracted by an LLM from a natural language text the user provides during the setup,
@@ -213,7 +213,7 @@ class MyAgent(RoutedAgent):
         :return: A `Status` object indicating the status of the method call (Completed/Failed).
         """
         message = ActionRequest(
-            request_type=action_type.value,
+            action_type=action_type.value,
             user=self._user,
         )
 
@@ -240,14 +240,14 @@ class MyAgent(RoutedAgent):
     async def handle_setup(self, message: SetupMessage, context: MessageContext) -> Status:
         """
         The method is called upon receiving a `SetupMessage` from the user.
-        \nThe method is called when a user provided a natural language description of their personal information and policies and therefore their
+        \nThe method is called when a user provides a natural language description of their personal information and policies and therefore their
         corresponding agent is created.
 
         \nThis message creates the personal agent if it was not previously created and setups it, as upon receiving a `SetupMessage` the `setup_agent` method is called.
 
         In the `SetupMessage` public information, private information and policies are all provided as a single natural language string. To extract them,
         the agent calls the main (default) LLM, the one contained in `self._model_client`, to generate a JSON formatted
-        list containing public information, policies and private information splitted in three sections.
+        list containing public information, policies and private information split in three sections.
         Upon splitting such personal information, the agent shares with the orchestrator only the public information and policies, notifying the central agent about the
         successful personal agent creation and therefore starting the pairing process.
 

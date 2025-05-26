@@ -28,11 +28,11 @@ class RequestType(Enum):
     GET_PERSONAL_RELATIONS = 3
     #: Request to retrieve public information given an agent ID.
     GET_PUBLIC_INFORMATION = 4
-    #: Request to retrieve private information  given an agent ID.
+    #: Request to retrieve private information given an agent ID.
     GET_PRIVATE_INFORMATION = 5
     #: Request to retrieve an agent policies and matching preferences given an agent ID.
     GET_POLICIES = 6
-    #: Request to get all the information (public and private information and policies)  given an agent ID.
+    #: Request to get all the information (public and private information and policies) given an agent ID.
     GET_USER_INFORMATION = 7
     #: Request to get the full pairing information saved by the orchestrator.
     GET_AGENT_RELATIONS_FULL = 8

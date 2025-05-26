@@ -15,6 +15,7 @@ def test_client():
     """
     The fixture for the FastAPI test client.
     It clears the database before each test and closes the database connection after each test.
+
     :return: None
     """
     clear_database()
@@ -26,13 +27,14 @@ async def register_runtime():
     """
     The fixture for registering the runtime.
     The runtime is started and stopped before and after each test.
+
     :return: None
     """
     init_database()
     Runtime.start_runtime()
     try:
-        #model_name = "meta-llama/Llama-3.3-70B-Instruct"
-        model_name = "qwen2.5"
+        model_name = "meta-llama/Llama-3.3-70B-Instruct"
+        #model_name = "qwen2.5"
         model_client = get_model(model_type=ModelType.OLLAMA, model=model_name)
         await register_agents(model_client, model_name, {model_name : model_client})
     except Exception as e:
@@ -43,7 +45,8 @@ async def register_runtime():
 async def cleanup_runtime():
     """
     A fixture to clean up the runtime after each test.
-    :return:
+
+    :return: None
     """
     yield
     print("Cleaning up runtime")
@@ -55,6 +58,7 @@ async def cleanup_runtime():
 def test_authentication(test_client, register_runtime, cleanup_runtime):
     """
     A synchronous test for authentication. The test checks if the correct credentials are accepted and invalid credentials are rejected.
+
     :param test_client: A FastAPI test client.
     :param register_runtime: A fixture to register the runtime.
     :param cleanup_runtime: A fixture to clean up the runtime after each test.
@@ -128,7 +132,7 @@ async def test_protected_endpoints(test_client, register_runtime, cleanup_runtim
 @pytest.mark.asyncio
 async def test_agent_operations(test_client, register_runtime, cleanup_runtime):
     """
-    Tests `ActionType` operations: `pause`, `resume`, and `delete`. So pausing, resuming, and deleting an agent.
+    Tests `ActionType` operations: `pause`, `resume`, and `delete`.
 
     :param test_client: FastAPI TestClient used to make HTTP requests.
     :param register_runtime: Fixture to initialize model runtime.

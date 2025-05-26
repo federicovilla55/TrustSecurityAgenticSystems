@@ -9,7 +9,7 @@ from ..enums import (Relation, RequestType, AgentRelations_PersonalAgents, Compl
 class SetupMessage:
     """
     Message sent by a user to after creating an account to setup the personal agent with the information the user sends as a natural language message in `content`.
-    A value for the default policies to follow (determin how strict they are) could be selected. By default, no default policies will be applied.
+    A value for the default policies to follow (to determine how strict they should be) could be selected. By default, no default policies will be applied.
     """
     content: str
     user: str
@@ -37,7 +37,10 @@ class PairingRequest:
 @dataclass
 class PairingResponse:
     """
-    Message sent by the orchestrator an agent to the orchestrator containing a response for a pairing request
+    Message sent by the personal agent to the orchestrator containing a response for a pairing request previously received.
+
+    As the orchestrator is the agent sending the pairing request to the personal agent, the pairing response is the corresponding response
+    to each pairing request received.
     """
     answer: dict[str, Relation]
     reasoning: str

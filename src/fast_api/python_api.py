@@ -34,7 +34,7 @@ clients = {}
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> None:
     """
-    The function is called when the FastAPI app starts. Database and runtime are intialized.
+    The function is called when the FastAPI app starts. Database and runtime are initialized.
     :param app: The FastAPI app object.
     :return: None
     """
@@ -550,5 +550,5 @@ if __name__ == "__main__":
     """
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
-    # To handle enrypted communication:
+    # To handle encrypted communication:
     # uvicorn.run(app, ssl_keyfile="./key.pem", ssl_certfile="./cert.pem")

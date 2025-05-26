@@ -107,8 +107,6 @@ class Runtime:
             )
         )
 
-        print("My Agent Registered")
-
     @classmethod
     async def send_message(cls, message, agent_type, agent_key="default"):
         """
@@ -140,7 +138,7 @@ class Runtime:
     @classmethod
     async def get_registered_agents(cls, message) -> set[str]:
         """
-        The method asks the orchestrator agent for the all the registered agents and returns a set containing them.
+        The method asks the orchestrator agent for all the registered agents and returns a set containing them.
 
         :param message: A message containing the orchestrator request.
         :return: A set containing the usernames of the registered agents.
@@ -174,6 +172,7 @@ class Runtime:
 def get_model(model_type : ModelType, model : Optional[str] = None, temperature : float = 0.5) -> ChatCompletionClient:
     """
     The method returns the specified model client.
+
     :param model_type: The model type or the specified model: Ollama, OpenAI, GEMINI or MISTRAL.
     :param model: The name of the model to be used.
     :param temperature: The temperature of the LLM model used. If not specified, the default temperature is used.
@@ -228,6 +227,7 @@ def get_model(model_type : ModelType, model : Optional[str] = None, temperature 
 async def register_agents(model_client : ChatCompletionClient, model_name : str, model_clients : Dict[str, ChatCompletionClient]):
     """
     The method registers the personal agent and the orchestrator agent.
+
     :param model_client: A ChatCompletionClient, an instance of the specified model.
     :param model_name: the name of the model.
     :param model_clients: A dictionary containing the model used when processing pairing agents.
@@ -239,6 +239,7 @@ async def register_agents(model_client : ChatCompletionClient, model_name : str,
 async def register_orchestrator(model_client : ChatCompletionClient, model_name : str):
     """
     The method registers the orchestrator agent.
+
     :param model_client: The ChatCompletionClient used by the orchestrator agent.
     :param model_name: The name of the model used by the orchestrator agent.
     :return: None
@@ -248,6 +249,7 @@ async def register_orchestrator(model_client : ChatCompletionClient, model_name 
 async def register_my_agent(model_client : ChatCompletionClient, model_clients : Dict[str, ChatCompletionClient]):
     """
     The method registers the personal agent.
+
     :param model_client: The ChatCompletionClient used by the personal agent.
     :param model_clients: A dictionary containing the model used when processing pairing agents.
     :return: None

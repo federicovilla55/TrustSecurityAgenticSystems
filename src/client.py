@@ -60,7 +60,7 @@ class Client:
         :return: A status indicating whether the setup was successful or not.
         """
         return await Runtime.send_message(
-            message=ActionRequest(request_type=ActionType.PAUSE_AGENT.value, user=self._username),
+            message=ActionRequest(action_type=ActionType.PAUSE_AGENT.value, user=self._username),
             agent_type="my_agent", agent_key=self._username
         )
 
@@ -72,7 +72,7 @@ class Client:
         :return: A status indicating whether the setup was successful or not.
         """
         return await Runtime.send_message(
-            message=ActionRequest(request_type=ActionType.RESUME_AGENT.value, user=self._username),
+            message=ActionRequest(action_type=ActionType.RESUME_AGENT.value, user=self._username),
             agent_type="my_agent",
             agent_key=self._username
         )
@@ -84,7 +84,7 @@ class Client:
         :return: A status indicating whether the setup was successful or not.
         """
         return await Runtime.send_message(
-            message=ActionRequest(request_type=ActionType.DELETE_AGENT.value, user=self._username),
+            message=ActionRequest(action_type=ActionType.DELETE_AGENT.value, user=self._username),
             agent_type="my_agent",
             agent_key=self._username
         )
@@ -247,7 +247,7 @@ class Client:
     async def update_models(self, models : dict) -> Status:
         """
         The method is called to update the personal agent's available LLM models.
-        This method overwrites the previous available models so it should be called with the models parameters containing all
+        This method overwrites the previous available models so it should be called with the model parameters containing all
         the LLMs the user is interested in using.
 
         :param models: A dictionary containing the available LLM models of the user.
@@ -297,7 +297,7 @@ class Client:
         """
         if reset:
             await Runtime.send_message(
-                message=ActionRequest(request_type=ActionType.RESET_AGENT.value, user=self._username),
+                message=ActionRequest(action_type=ActionType.RESET_AGENT.value, user=self._username),
                 agent_type="my_agent",
                 agent_key=self._username,
             )

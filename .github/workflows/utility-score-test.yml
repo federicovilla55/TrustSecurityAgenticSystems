@@ -1,4 +1,4 @@
-name: Run Python Tests
+name: Agentic System Security and Utility Evaluation
 
 on:
   push:
@@ -31,6 +31,6 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-asyncio pytest-cov python-multipart
 
-      - name: Run test LLM score
+      - name: Run test for evaluating System performance
         run: |
           pytest src/tests/experiments.py --asyncio-mode=auto -s

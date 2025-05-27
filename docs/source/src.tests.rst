@@ -23,7 +23,7 @@ src.tests.test\_fast\_api module
 src.tests.test\_llm\_score module
 ---------------------------------
 
-.. automodule:: src.tests.test_llm_score
+.. automodule:: src.tests.experiments
    :members:
    :show-inheritance:
    :undoc-members:

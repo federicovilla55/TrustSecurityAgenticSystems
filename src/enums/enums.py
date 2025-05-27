@@ -82,5 +82,18 @@ class Status(Enum):
     COMPLETED = 1
     #: The task failed to complete.
     FAILED = 2
-
+    #: Currently not implemented.
     REPEATED = 3
+
+class Defense(Enum):
+    """
+    The class represents the defenses applied by the OrchestratorAgent.
+    """
+
+    #: No defenses applied. Every LLM prompt is executed without any check and the Orchestrator logs every request and message in a database
+    #: for future analysis.
+    VANILLA = 0
+
+    #: Added data analysis
+    SPOTLIGHT = 1
+

@@ -5,7 +5,7 @@ To generate the code documentation:
     ```bash
     pip install sphinx sphinx_rtd_theme
     ```
-2. Compile the code documentation using Sphinix:
+2. Compile the code documentation using Sphinx:
     ```bash
    sphinx-build -b html source docs/build/html 
    ```

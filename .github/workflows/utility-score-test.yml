@@ -32,4 +32,4 @@ jobs:
 
       - name: Run test LLM score
         run: |
-          pytest src/tests/test_llm_score.py --asyncio-mode=auto -s
+          pytest src/tests/experiments.py --asyncio-mode=auto -s

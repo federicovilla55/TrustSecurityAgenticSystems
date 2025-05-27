@@ -124,8 +124,9 @@ class MyAgent(RoutedAgent):
         indicating whether they are selected to be used to evaluate the pairing requests sent by the orchestrator.
 
         :return: A dictionary containing the names of the LLMs and their corresponding boolean values,
-        indicating whether they are selected to be used to evaluate the pairing requests sent by the orchestrator.
+                 indicating whether they are selected to be used to evaluate the pairing requests sent by the orchestrator.
         """
+
         return {name: value[0] for name, value in self._processing_model_clients.items()}
 
     def get_public_information(self) -> str:

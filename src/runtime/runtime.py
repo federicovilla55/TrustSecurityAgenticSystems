@@ -95,7 +95,7 @@ class Runtime:
 
         :param model_client: The ChatCompletionClient used by the personal agent.
         :param model_clients: A dictionary containing the model used when processing pairing agents.
-        The key is the name of the model and the value is the ChatCompletionClient.
+               The key is the name of the model and the value is the ChatCompletionClient.
         :return: None
         """
         await MyAgent.register(
@@ -156,11 +156,11 @@ class Runtime:
 
         :param model_type: The model type or the specified model: Ollama, OpenAI, GEMINI or MISTRAL.
         :param processing_model_clients: A dictionary containing the model used when processing pairing agents.
-        The key is the name of the model and the value is the ChatCompletionClient.
+               The key is the name of the model and the value is the ChatCompletionClient.
         :param model: The name of the model to be used.
         :param temperature_my_agent: The temperature of the LLM model used by the personal agent.
         :param temperature_orchestrator: The temperature of the LLM model used by the orchestrator agent.
-        :return:
+        :return: None
         """
         model_my_agent = get_model(model_type, model, temperature_my_agent)
         model_orchestrator = get_model(model_type, model, temperature_orchestrator)

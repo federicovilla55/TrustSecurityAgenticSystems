@@ -26,7 +26,7 @@ class OrchestratorAgent(RoutedAgent):
     public information of each agent and the pairing status of each agent.
     The orchestrator saves the feedback each user sends for the agent-established connections.
     """
-    def __init__(self, model_client: ChatCompletionClient, model_client_name : str):
+    def __init__(self, model_client: ChatCompletionClient, model_client_name : str, defense : int = 0):
         super().__init__("orchestrator_agent")
         print(f"Created an Orchestrator: '{self.id}'")
 
@@ -38,6 +38,8 @@ class OrchestratorAgent(RoutedAgent):
         self._matched_agents: CompleteAgentRelations = {}
         self._model_context_dict : Dict[str_pair, BufferedChatCompletionContext] = {}
         self._agents_lock = asyncio.Lock()
+
+        self._defense : int = 0
 
     async def get_public_information(self, requested_user : str) -> str:
         """

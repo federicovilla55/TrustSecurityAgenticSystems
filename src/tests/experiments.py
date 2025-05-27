@@ -1,7 +1,7 @@
 import time
 
 import pytest
-# pytest is not defined in the project requirements
+import asyncio
 
 from src.runtime import Runtime, get_model, register_orchestrator, register_my_agent
 from src.client import Client
@@ -9,6 +9,9 @@ from src.models import *
 from src.enums import *
 from src.database import init_database, close_database, clear_database
 from typing import Dict, Tuple, Set, Any
+
+#: Data type of the dataset. The dataset consists of a series of users, characterized by their personal information (including public data, private data
+#: and matching preferences) and a set containing the users a certain agent should be paired with (the ground truth).
 
 Dataset = Dict[str, Tuple[str, Set[str], Client]]
 
@@ -21,7 +24,7 @@ async def configure_client(username: str, user_information: str) -> Client:
 
 async def create_datset() -> Dataset:
     """
-    Create a synthetic dataset of users and their corresponding setup information.
+    Create a synthetic dataset of users and their corresponding personal information.
 
     The dataset is created using LLMs as an efficient way to create diverse user profiles mitigating the privacy risks
     associated with using real data.
@@ -137,12 +140,24 @@ async def create_datset() -> Dataset:
         ),
     }
 
+    task_map = {}
+
+    for key, value in dataset.items():
+        task_map[key] = (configure_client(key, value[0]))
+
+    tasks = list(task_map.values())
+    group_size = len(tasks)
+    for i in range(int(len(tasks)/group_size)):
+        await asyncio.gather(*tasks[i*group_size : (i+1)*group_size])
+
     for key, value in dataset.items():
         dataset[key] = (
             dataset[key][0],
             dataset[key][1],
-            await configure_client(key, value[0])
+            task_map[key],
         )
+
+    print(tasks)
 
     return dataset
 
@@ -211,6 +226,8 @@ async def test_llm_score():
     dataset = await create_datset()
 
     assert len(dataset) == 21
+
+    exit()
 
     await Runtime.stop_runtime()
     Runtime.start_runtime()

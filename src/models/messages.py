@@ -126,5 +126,13 @@ class GetServiceMessage:
     the wanted task the service is needed for.
     Example: "I want to create a music playlist" -> Service to create a music playlist (Spotify, Apple Music, ...)
     """
-    name : str
+    username : str
     description : str
+
+@dataclass
+class GetServiceAnswer:
+    """
+    Message sent by the Orchestrator as an answer to a previously received `GetServiceMessage`.
+    """
+    results : list[str]
+    information : dict[str, str]

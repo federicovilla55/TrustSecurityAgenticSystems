@@ -10,10 +10,10 @@ from autogen_core.models import ChatCompletionClient, SystemMessage, UserMessage
 from src.enums import Status
 from src.database import log_event
 from src.models import (ConfigurationMessage, PairingRequest, PairingResponse, GetRequest,
-                        GetResponse, UserInformation, ActionRequest, FeedbackMessage)
+                        GetResponse, UserInformation, ActionRequest, FeedbackMessage,
+                        AddServiceMessage, GetServiceMessage, GetServiceAnswer)
 from src.enums import (json_pair, AgentRelations_PersonalAgents, CompleteAgentRelations,
                        str_pair, RequestType, Relation, ActionType, LLMRelations)
-from src.models.messages import AddServiceMessage, GetServiceMessage
 
 
 @type_subscription(topic_type="orchestrator_agent")
@@ -581,7 +581,7 @@ class OrchestratorAgent(RoutedAgent):
         """
         The method is called upon receiving a message containing a request to add a new service in the platform.
 
-        :param message: An `AddServiceMessage` containing a request to add a new service with an unique name and relative service information.
+        :param message: An `AddServiceMessage` containing a request to add a new service with unique name and relative service information.
         :param context:
         :return: A status indicating whether the service was successfully added or not.
         """
@@ -598,7 +598,7 @@ class OrchestratorAgent(RoutedAgent):
 
 
     @message_handler
-    async def handle_get_service_request(self, message: GetServiceMessage, context: MessageContext) -> Tuple[Status, List[str]]:
+    async def handle_get_service_request(self, message: GetServiceMessage, context: MessageContext) -> GetServiceAnswer:
         """
         The method is called upon receiving a message containing a user's request for a service given a natural language task the user wants to solve.
         \nAs an example, the user might request "I want to create a music playlist" and the Orchestrator should provide the services to create a music
@@ -606,8 +606,7 @@ class OrchestratorAgent(RoutedAgent):
 
         :param message: A message containing a user's request for service provided as a natural language task the user wants to solve.
         :param context:
-        :return: A tuple containing as the first element a Status indicating if the get request was successful or not, and a list of
-                 strings containing a ranked list of services (in order of relevance).
+        :return: A list of strings containing a ranked list of services (in order of relevance).
         """
 
-        return (Status.COMPLETED, [])
+        return GetServiceAnswer(None, None)

@@ -610,4 +610,4 @@ class OrchestratorAgent(RoutedAgent):
                  strings containing a ranked list of services (in order of relevance).
         """
 
-        return Status.COMPLETED
+        return (Status.COMPLETED, [])

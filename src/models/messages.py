@@ -109,3 +109,22 @@ class FeedbackMessage:
     sender : str
     receiver : str
     feedback: Relation
+
+@dataclass
+class AddServiceMessage:
+    """
+    Message sent to the Orchestrator containing a request to add a new service to the list of available services saved by the orchestrator.
+    """
+    name : str
+    description : str
+    website : str = ""
+
+@dataclass
+class GetServiceMessage:
+    """
+    Message sent by a personal agent to the Orchestrator on behalf of a user requesting a service from a natural language message describing
+    the wanted task the service is needed for.
+    Example: "I want to create a music playlist" -> Service to create a music playlist (Spotify, Apple Music, ...)
+    """
+    name : str
+    description : str

@@ -13,6 +13,8 @@ from src.models import (ConfigurationMessage, PairingRequest, PairingResponse, G
                         GetResponse, UserInformation, ActionRequest, FeedbackMessage)
 from src.enums import (json_pair, AgentRelations_PersonalAgents, CompleteAgentRelations,
                        str_pair, RequestType, Relation, ActionType, LLMRelations)
+from src.models.messages import AddServiceMessage, GetServiceMessage
+
 
 @type_subscription(topic_type="orchestrator_agent")
 class OrchestratorAgent(RoutedAgent):
@@ -30,14 +32,26 @@ class OrchestratorAgent(RoutedAgent):
         super().__init__("orchestrator_agent")
         print(f"Created an Orchestrator: '{self.id}'")
 
+        # LLM interaction data dtructures: LLM name and ChatCompletionClient
         self._model_client = model_client
         self._model_client_name = model_client_name
+
+        # PairMe via MyAgent related data structures: set with usernames, user information and relations
         self._registered_agents: Set[str] = set()
         self._paused_agents: Set[str] = set()
         self._agent_information: Dict[str, json_pair] = {}
         self._matched_agents: CompleteAgentRelations = {}
-        self._model_context_dict : Dict[str_pair, BufferedChatCompletionContext] = {}
+
+        # Lock for concurrent access of PairMe via MyAgent related data structures
         self._agents_lock = asyncio.Lock()
+
+        # Model context to keep track of Orchestrator-provided feedbacks for each evaluated pairing
+        self._model_context_dict : Dict[str_pair, BufferedChatCompletionContext] = {}
+
+        # Platform Services data structures: locking, BufferedChatCompletionContext and set with unique service names.
+        self._services_lock = asyncio.Lock()
+        self._services : BufferedChatCompletionContext = BufferedChatCompletionContext()
+        self._service_names = set()
 
         self._defense : int = 0
 
@@ -170,7 +184,6 @@ class OrchestratorAgent(RoutedAgent):
         """
         async with self._agents_lock:
             return self._matched_agents.copy()
-
 
     async def get_matches_for_agent(self, agent_id: str) -> AgentRelations_PersonalAgents:
         """
@@ -561,4 +574,40 @@ class OrchestratorAgent(RoutedAgent):
             source=message.sender,
             data=message
         )
+        return Status.COMPLETED
+
+    @message_handler
+    async def add_service(self, message: AddServiceMessage, context: MessageContext) -> Status:
+        """
+        The method is called upon receiving a message containing a request to add a new service in the platform.
+
+        :param message: An `AddServiceMessage` containing a request to add a new service with an unique name and relative service information.
+        :param context:
+        :return: A status indicating whether the service was successfully added or not.
+        """
+        with self._services_lock:
+            if message.name in self._services:
+                return Status.FAILED
+
+            self._service_names.add(message.name)
+
+            # Evaluate the services (via LLM) and add them in
+            # self._services BufferedChatCompletionContext
+
+        return Status.COMPLETED
+
+
+    @message_handler
+    async def handle_get_service_request(self, message: GetServiceMessage, context: MessageContext) -> Tuple[Status, List[str]]:
+        """
+        The method is called upon receiving a message containing a user's request for a service given a natural language task the user wants to solve.
+        \nAs an example, the user might request "I want to create a music playlist" and the Orchestrator should provide the services to create a music
+        playlist so Spotify, Apple Music, ...
+
+        :param message: A message containing a user's request for service provided as a natural language task the user wants to solve.
+        :param context:
+        :return: A tuple containing as the first element a Status indicating if the get request was successful or not, and a list of
+                 strings containing a ranked list of services (in order of relevance).
+        """
+
         return Status.COMPLETED

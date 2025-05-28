@@ -28,11 +28,11 @@ class OrchestratorAgent(RoutedAgent):
     public information of each agent and the pairing status of each agent.
     The orchestrator saves the feedback each user sends for the agent-established connections.
     """
-    def __init__(self, model_client: ChatCompletionClient, model_client_name : str, defense : int = 0):
+    def __init__(self, model_client: ChatCompletionClient, model_client_name : str):
         super().__init__("orchestrator_agent")
         print(f"Created an Orchestrator: '{self.id}'")
 
-        # LLM interaction data dtructures: LLM name and ChatCompletionClient
+        # LLM interaction data structures: LLM name and ChatCompletionClient
         self._model_client = model_client
         self._model_client_name = model_client_name
 
@@ -50,10 +50,8 @@ class OrchestratorAgent(RoutedAgent):
 
         # Platform Services data structures: locking, BufferedChatCompletionContext and set with unique service names.
         self._services_lock = asyncio.Lock()
-        self._services : BufferedChatCompletionContext = BufferedChatCompletionContext()
+        self._services : BufferedChatCompletionContext = BufferedChatCompletionContext(buffer_size=5)
         self._service_names = set()
-
-        self._defense : int = 0
 
     async def get_public_information(self, requested_user : str) -> str:
         """
@@ -342,7 +340,14 @@ class OrchestratorAgent(RoutedAgent):
 
         return llm_answer.content
 
-    async def pair_agent_with_feedback(self, sender : str, receiver : str) -> None:
+    def spotlight_public_information(self, information : str) -> str:
+        return information
+
+    async def detect_prompt_inject(self, public_information : str) -> bool:
+        return False
+
+
+    async def pair_agent(self, sender : str, receiver : str) -> None:
         """
         The method is called to send a pairing request from the personal agent sender to the personal agent receiver and to store the receiver response in the `_matched_agents`
         orchestrator's dictionary.
@@ -357,11 +362,11 @@ class OrchestratorAgent(RoutedAgent):
 
         async with self._agents_lock:
             sender_information = self._agent_information[sender]
-            receiver_information = self._agent_information[receiver]
 
-        receiver_policies = json.dumps(receiver_information[1], indent=4, sort_keys=True)
         sender_public_information = json.dumps(sender_information[0], indent=4, sort_keys=True)
 
+        sender_public_information = self.spotlight_public_information(sender_public_information)
+        
         self._model_context_dict[(sender, receiver)] = BufferedChatCompletionContext(buffer_size=5)
 
         pair_response: PairingResponse = await self.send_message(
@@ -435,11 +440,11 @@ class OrchestratorAgent(RoutedAgent):
         for registered_agent in registered_agents_copy:
             # Do the already registered agents accept the pair with the new agent?
             if matched_agents_copy.get((user_to_add, registered_agent)) == Relation.UNCONTACTED:
-                pairing_tasks.append(self.pair_agent_with_feedback(user_to_add, registered_agent))
+                pairing_tasks.append(self.pair_agent(user_to_add, registered_agent))
 
             # Does the new agent accept the pair with the already registered agent?
             if matched_agents_copy.get((registered_agent, user_to_add)) == Relation.UNCONTACTED:
-                pairing_tasks.append(self.pair_agent_with_feedback(registered_agent, user_to_add))
+                pairing_tasks.append(self.pair_agent(registered_agent, user_to_add))
 
         if pairing_tasks:
             await asyncio.gather(*pairing_tasks)
@@ -458,6 +463,9 @@ class OrchestratorAgent(RoutedAgent):
         """
         async with self._agents_lock:
             registered = (message.user in self._registered_agents or message.user in self._paused_agents)
+
+        if await self.detect_prompt_inject(json.dumps(message.user_information)):
+            return
 
         if not registered and message.user == context.sender.key:
             for agent in self._registered_agents:

@@ -6,7 +6,9 @@ import asyncio
 
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 
-from src.agents import OrchestratorAgent, MyAgent
+from src import Defense
+from src.agents import OrchestratorAgent, MyAgent, SpotlightOrchestrator, OrchestratorCheckingPublicInfo
+from src.agents.SpotlightOrchestrator import SpotlightType
 from src.enums import ModelType
 
 class Runtime:
@@ -87,6 +89,51 @@ class Runtime:
         )
 
         print("Orchestrator Registered")
+
+    @classmethod
+    async def register_spotlight_orchestrator(cls, model_client: ChatCompletionClient,
+                                              model_client_name : str, spotlight_type : SpotlightType = SpotlightType.DATAMARKING) -> None:
+        """
+        Register the orchestrator agent.
+
+        :param model_client: The ChatCompletionClient used by the orchestrator agent.
+        :param model_client_name: The model name of the orchestrator agent.
+        :param spotlight_type: The Spotlight mechanism type applied.
+        :return: None
+        """
+        await SpotlightOrchestrator.register(
+            cls._get_instance(),
+            "orchestrator_agent",
+            lambda: SpotlightOrchestrator(
+                model_client=model_client,
+                model_client_name=model_client_name,
+                spotlight_type=spotlight_type,
+            )
+        )
+
+        print("Orchestrator with Spotlight Registered")
+
+    @classmethod
+    async def register_orchestrator_checking_infos(cls, model_client: ChatCompletionClient, model_client_name: str) -> None:
+        """
+        Register the orchestrator agent.
+
+        :param model_client: The ChatCompletionClient used by the orchestrator agent.
+        :param model_client_name: The model name of the orchestrator agent.
+        :param spotlight_type: The Spotlight mechanism type applied.
+        :return: None
+        """
+        await OrchestratorCheckingPublicInfo.register(
+            cls._get_instance(),
+            "orchestrator_agent",
+            lambda: OrchestratorCheckingPublicInfo(
+                model_client=model_client,
+                model_client_name=model_client_name,
+            )
+        )
+
+        print("Orchestrator checking public information Registered")
+
 
     @classmethod
     async def register_my_agent(cls, model_client: ChatCompletionClient, model_clients : Dict[str, ChatCompletionClient]):
@@ -236,15 +283,21 @@ async def register_agents(model_client : ChatCompletionClient, model_name : str,
     await Runtime.register_my_agent(model_client=model_client, model_clients=model_clients)
     await Runtime.register_orchestrator(model_client=model_client, model_client_name=model_name)
 
-async def register_orchestrator(model_client : ChatCompletionClient, model_name : str):
+async def register_orchestrator(model_client : ChatCompletionClient, model_name : str, defense : Defense = Defense.VANILLA):
     """
     The method registers the orchestrator agent.
 
     :param model_client: The ChatCompletionClient used by the orchestrator agent.
     :param model_name: The name of the model used by the orchestrator agent.
+    :param defense: The defense mechanism used by the orchestrator to ensure security and trustworthiness.
     :return: None
     """
-    await Runtime.register_orchestrator(model_client=model_client, model_client_name=model_name)
+    if defense == Defense.VANILLA:
+        await Runtime.register_orchestrator(model_client=model_client, model_client_name=model_name)
+    elif defense == Defense.SPOTLIGHT:
+        await Runtime.register_spotlight_orchestrator(model_client=model_client, model_client_name=model_name)
+    elif defense == Defense.CHECKING_INFO:
+        await Runtime.register_orchestrator_checking_infos(model_client=model_client, model_client_name=model_name)
 
 async def register_my_agent(model_client : ChatCompletionClient, model_clients : Dict[str, ChatCompletionClient]):
     """
@@ -255,4 +308,3 @@ async def register_my_agent(model_client : ChatCompletionClient, model_clients :
     :return: None
     """
     await Runtime.register_my_agent(model_client=model_client, model_clients=model_clients)
-

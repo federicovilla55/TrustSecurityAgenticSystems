@@ -20,7 +20,7 @@ src.tests.test\_fast\_api module
    :show-inheritance:
    :undoc-members:
 
-src.tests.test\_llm\_score module
+src.tests.experiments module
 ---------------------------------
 
 .. automodule:: src.tests.experiments

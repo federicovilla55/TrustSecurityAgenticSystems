@@ -3,6 +3,8 @@ import time
 import pytest
 import asyncio
 import json
+import os
+import logging
 
 from src.runtime import Runtime, get_model, register_orchestrator, register_my_agent
 from src.client import Client
@@ -13,6 +15,18 @@ from typing import Dict, Tuple, Set, Any
 
 #: Data type of the dataset. The dataset consists of a series of users, characterized by their personal information (including public data, private data
 #: and matching preferences) and a set containing the users a certain agent should be paired with (the ground truth).
+
+log_file = os.path.join(os.getcwd(), 'scores.log')
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+for h in list(logger.handlers):
+    logger.removeHandler(h)
+file_handler = logging.FileHandler(log_file, mode='a')
+file_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
 
 Dataset = Dict[str, Tuple[str, Set[str], Client]]
 
@@ -42,21 +56,21 @@ async def create_datset() -> Dataset:
         matches = set(payload["matches"])
         dataset[username] = (info, matches, None)
 
-    task_map = {user: configure_client(user, info) for user, (info, _, _) in dataset.items()}
+    task_map = {
+        user: asyncio.create_task(configure_client(user, info))
+        for user, (info, _, _) in dataset.items()
+    }
 
-    tasks = list(task_map.values())
-    group_size = 11
-    for i in range(int(len(tasks)/group_size)):
-        await asyncio.gather(*tasks[i*group_size : (i+1)*group_size])
+    group_size = len(task_map)
+    users = list(task_map.keys())
+    for i in range(0, len(users), group_size):
+        group_users = users[i:i + group_size]
+        group_tasks = [task_map[user] for user in group_users]
+        results = await asyncio.gather(*group_tasks)
 
-    for key, value in dataset.items():
-        dataset[key] = (
-            dataset[key][0],
-            dataset[key][1],
-            task_map[key],
-        )
-
-    print(tasks)
+        for user, result in zip(group_users, results):
+            info, matches, _ = dataset[user]
+            dataset[user] = (info, matches, result)
 
     return dataset
 
@@ -69,30 +83,46 @@ def get_feedback(sender : str, receiver : str, dataset : Dataset) -> bool:
 def compute_overall_accuracy(relations: CompleteAgentRelations):
     model_stats = {}
     for pair, model_dict in relations.items():
-        for model, (model_rel, user_rel, _) in model_dict.items():
+        feedback : Relation = model_dict[1]
+        for model, (model_rel, _) in model_dict[0].items():
             if model not in model_stats:
-                model_stats[model] = {"correct": 0, "total": 0}
-            if model_rel == Relation.UNCONTACTED or user_rel == Relation.UNCONTACTED:
-                print(f"Uncontacted relation found for {pair} by {model}")
-            correct = ((model_rel == Relation.ACCEPTED and user_rel == Relation.USER_ACCEPTED) or
-                       (model_rel == Relation.REFUSED and user_rel == Relation.USER_REFUSED))
+                model_stats[model] = {}
+                model_stats[model]["correct"] = 0
+                model_stats[model]["total"] = 0
+
+            if not feedback or Relation(feedback) == Relation.UNCONTACTED:
+                feedback = Relation.UNCONTACTED
+                logging.warning(f"Uncontacted relation found for {pair} by {model}")
+
+            correct = (
+                    (Relation(model_rel) == Relation.ACCEPTED and Relation(feedback) == Relation.USER_ACCEPTED) or
+                       (Relation(model_rel) == Relation.REFUSED and Relation(feedback) == Relation.USER_REFUSED)
+            )
+
             model_stats[model]["correct"] += int(correct)
             model_stats[model]["total"] += 1
 
     for model, stats in model_stats.items():
         accuracy = stats["correct"] / stats["total"] if stats["total"] > 0 else 0
+        logging.info(f"Model {model}: Overall Accuracy = {accuracy:.2%}")
         print(f"Model {model}: Overall Accuracy = {accuracy:.2%}")
 
-def compute_user_accuracy(relations: CompleteAgentRelations):
+
+'''def compute_user_accuracy(relations: CompleteAgentRelations):
     user_stats = {}
     for (user, _), model_dict in relations.items():
-        if user not in user_stats:
-            user_stats[user] = {}
-        for model, (model_rel, user_rel, _) in model_dict.items():
+        for model, (model_rel, user_feedbacks, _) in model_dict.items():
+            # Determine user_rel
+            if not user_feedbacks:
+                user_rel = Relation.UNCONTACTED
+                logging.warning(f"Uncontacted relation for user {user} by {model}")
+            else:
+                last = user_feedbacks[-1]
+                user_rel = Relation.USER_ACCEPTED if last else Relation.USER_REFUSED
+            if user not in user_stats:
+                user_stats[user] = {}
             if model not in user_stats[user]:
                 user_stats[user][model] = {"correct": 0, "total": 0}
-            if model_rel == Relation.UNCONTACTED or user_rel == Relation.UNCONTACTED:
-                print(f"Uncontacted relation found for user {user} by {model}")
             correct = ((model_rel == Relation.ACCEPTED and user_rel == Relation.USER_ACCEPTED) or
                        (model_rel == Relation.REFUSED and user_rel == Relation.USER_REFUSED))
             user_stats[user][model]["correct"] += int(correct)
@@ -101,32 +131,40 @@ def compute_user_accuracy(relations: CompleteAgentRelations):
     for user, models in user_stats.items():
         for model, stats in models.items():
             accuracy = stats["correct"] / stats["total"] if stats["total"] > 0 else 0
-            print(f"User {user}, Model {model}: Accuracy = {accuracy:.2%}")
+            logging.info(f"User {user}, Model {model}: Accuracy = {accuracy:.2%}")
+            print(f"User {user}, Model {model}: Accuracy = {accuracy:.2%}")'''
 
-@pytest.mark.asyncio
-async def test_agentic_system_utility():
-    """
-    Tests for the LLM Score computation.
-    The test generates 11 user (from synthentic LLM-generated data) and uses their pairing to compute a matching score for each user.
-    The matching score of each pairing is then used to compute a score for each model.
-    """
+@pytest.fixture(autouse=True)
+async def reset_runtime():
+    clear_database()
     init_database()
     Runtime.start_runtime()
+    yield
+    Runtime.stop_runtime()
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("defense", [Defense.VANILLA, Defense.SPOTLIGHT, Defense.CHECKING_INFO])
+async def test_agentic_system_utility(defense):
+    """
+    Tests for the LLM Score computation.
+    The test generates 11 users (from synthentic LLM-generated data) and uses their pairing to compute a matching score for each user.
+    The matching score of each pairing is then used to compute a score for each model.
+    """
     model_name = "meta-llama/Llama-3.3-70B-Instruct"
     model_client_my_agent = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.7)
     model_client_orchestrator = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.5)
 
     await register_my_agent(model_client_my_agent, {model_name: model_client_my_agent})
-    await register_orchestrator(model_client_orchestrator, model_name)
+    await register_orchestrator(model_client_orchestrator, model_name, defense=defense)
 
-    print("Test LLM Score Started.")
+    print(f"Test LLM Score Started with defense: {defense}.")
+
+    logger.info(f"Starting utility test with defense={defense}")
+
 
     dataset = await create_datset()
 
     assert len(dataset) == 11
-
-    exit()
 
     await Runtime.stop_runtime()
     Runtime.start_runtime()
@@ -163,15 +201,21 @@ async def test_agentic_system_utility():
     print(f"These are the relations: {relations_full.agents_relation_full}")
 
     compute_overall_accuracy(relations_full.agents_relation_full)
-    compute_user_accuracy(relations_full.agents_relation_full)
+    #compute_user_accuracy(relations_full.agents_relation_full)
+
+    logger.info(f"Completed utility test with defense={defense}\n")
+
+
+    logging.shutdown()
+    assert os.path.exists(log_file) and os.path.getsize(log_file) > 0, "Problem creating or updating 'scores.log'."
+    assert True
 
 
 #@pytest.mark.asyncio
+#@pytest.mark.parametrize("defense", [Defense.VANILLA, Defense.SPOTLIGHT, Defense.CHECKING_INFO])
 async def test_agentic_system_security():
     """
-    Test for the
 
     :return: None
     """
-    print("SECONDO")
     assert True

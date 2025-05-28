@@ -134,14 +134,6 @@ def compute_overall_accuracy(relations: CompleteAgentRelations):
             logging.info(f"User {user}, Model {model}: Accuracy = {accuracy:.2%}")
             print(f"User {user}, Model {model}: Accuracy = {accuracy:.2%}")'''
 
-@pytest.fixture(autouse=True)
-async def reset_runtime():
-    clear_database()
-    init_database()
-    Runtime.start_runtime()
-    yield
-    Runtime.stop_runtime()
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize("defense", [Defense.VANILLA, Defense.SPOTLIGHT, Defense.CHECKING_INFO])
 async def test_agentic_system_utility(defense):
@@ -150,6 +142,10 @@ async def test_agentic_system_utility(defense):
     The test generates 11 users (from synthentic LLM-generated data) and uses their pairing to compute a matching score for each user.
     The matching score of each pairing is then used to compute a score for each model.
     """
+    clear_database()
+    init_database()
+    Runtime.start_runtime()
+
     model_name = "meta-llama/Llama-3.3-70B-Instruct"
     model_client_my_agent = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.7)
     model_client_orchestrator = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.5)

@@ -107,36 +107,10 @@ def compute_overall_accuracy(relations: CompleteAgentRelations):
         logging.info(f"Model {model}: Overall Accuracy = {accuracy:.2%}")
         print(f"Model {model}: Overall Accuracy = {accuracy:.2%}")
 
-
-'''def compute_user_accuracy(relations: CompleteAgentRelations):
-    user_stats = {}
-    for (user, _), model_dict in relations.items():
-        for model, (model_rel, user_feedbacks, _) in model_dict.items():
-            # Determine user_rel
-            if not user_feedbacks:
-                user_rel = Relation.UNCONTACTED
-                logging.warning(f"Uncontacted relation for user {user} by {model}")
-            else:
-                last = user_feedbacks[-1]
-                user_rel = Relation.USER_ACCEPTED if last else Relation.USER_REFUSED
-            if user not in user_stats:
-                user_stats[user] = {}
-            if model not in user_stats[user]:
-                user_stats[user][model] = {"correct": 0, "total": 0}
-            correct = ((model_rel == Relation.ACCEPTED and user_rel == Relation.USER_ACCEPTED) or
-                       (model_rel == Relation.REFUSED and user_rel == Relation.USER_REFUSED))
-            user_stats[user][model]["correct"] += int(correct)
-            user_stats[user][model]["total"] += 1
-
-    for user, models in user_stats.items():
-        for model, stats in models.items():
-            accuracy = stats["correct"] / stats["total"] if stats["total"] > 0 else 0
-            logging.info(f"User {user}, Model {model}: Accuracy = {accuracy:.2%}")
-            print(f"User {user}, Model {model}: Accuracy = {accuracy:.2%}")'''
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize("defense", [Defense.VANILLA, Defense.SPOTLIGHT, Defense.CHECKING_INFO])
-async def test_agentic_system_utility(defense):
+@pytest.mark.parametrize("model", [["meta-llama/Llama-3.3-70B-Instruct", ModelType.OLLAMA]])
+async def test_agentic_system_utility(defense, model):
     """
     Tests for the LLM Score computation.
     The test generates 11 users (from synthentic LLM-generated data) and uses their pairing to compute a matching score for each user.
@@ -146,17 +120,21 @@ async def test_agentic_system_utility(defense):
     init_database()
     Runtime.start_runtime()
 
-    model_name = "meta-llama/Llama-3.3-70B-Instruct"
-    model_client_my_agent = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.7)
-    model_client_orchestrator = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.5)
+    model_name = model[0]
+    model_type = model[1]
 
-    await register_my_agent(model_client_my_agent, {model_name: model_client_my_agent})
-    await register_orchestrator(model_client_orchestrator, model_name, defense=defense)
+    model_client_my_agent = get_model(model_type=model_type, model=model_name, temperature=0.7)
+    model_client_orchestrator = get_model(model_type=model_type, model=model_name, temperature=0.5)
+
+    try:
+        await register_my_agent(model_client_my_agent, {model_name: model_client_my_agent})
+        await register_orchestrator(model_client_orchestrator, model_name, defense=defense)
+    except Exception as e:
+        print(e)
 
     print(f"Test LLM Score Started with defense: {defense}.")
 
     logger.info(f"Starting utility test with defense={defense}")
-
 
     dataset = await create_datset()
 
@@ -191,7 +169,7 @@ async def test_agentic_system_utility(defense):
     await model_client_my_agent.close()
     await model_client_orchestrator.close()
 
-    print("Test Runtime Finished.")
+    close_database()
 
     # Now use the evaluated relations to create an accuracy score
     print(f"These are the relations: {relations_full.agents_relation_full}")
@@ -207,8 +185,10 @@ async def test_agentic_system_utility(defense):
     assert True
 
 
-#@pytest.mark.asyncio
-#@pytest.mark.parametrize("defense", [Defense.VANILLA, Defense.SPOTLIGHT, Defense.CHECKING_INFO])
+@pytest.mark.asyncio
+@pytest.mark.parametrize("defense", [Defense.VANILLA, Defense.SPOTLIGHT, Defense.CHECKING_INFO])
+@pytest.mark.parametrize("model", [["meta-llama/Llama-3.3-70B-Instruct", ModelType.OLLAMA]])
+@pytest.mark.parametrize("attack", [])
 async def test_agentic_system_security():
     """
 

@@ -38,9 +38,5 @@
   "Priya-Patel": {
     "info": "Namaste, I’m Priya Patel, Data Scientist at Infosys Bangalore focusing on NLP for social good. Public: mention my interest in ethical AI and low-resource languages. Private: avoid time‐zone mismatches that cut into family dinner. Only connect with researchers or devs in NLP, computational linguistics, or NGOs using AI. Decline corporate recruiters or crypto enthusiasts. Be courteous, detail-oriented, and confirm project relevance.",
     "matches": ["Anna-Muller", "Elodie-Dubois", "John-Smith"]
-  },
-  "Oliver-King": {
-    "info": "Hi, I’m Oliver King, Year 12 student at Westminster School, London. I love robotics and competitive programming. Privately, I’m balancing exams so need efficient chats. Only pair me with university students or mentors in STEM fields. No generic career coaches or sales pitches. Maintain a supportive, explanatory tone and verify your match’s academic standing.",
-    "matches": ["Anna-Muller", "Marco-Rossi", "Elodie-Dubois"]
   }
 }

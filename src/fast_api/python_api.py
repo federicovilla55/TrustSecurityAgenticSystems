@@ -158,7 +158,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        print(payload)
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
@@ -253,8 +252,6 @@ async def setup_user(setup_json: dict, user_token_data: str = Depends(get_curren
     client = await get_client(setup_json["user"])
 
     clients[setup_json["user"]] = client
-
-    print(f"SETUP OBJECT: {setup_json}")
 
     operation : Status = await client.setup_user(setup_json["content"], int(setup_json["default_value"]))
 
@@ -519,8 +516,6 @@ async def get_information(information : dict, current_user: str = Depends(get_cu
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid request type"
         )
-
-    print(f"GOTTEN INFOS: {response}")
 
     return response
 

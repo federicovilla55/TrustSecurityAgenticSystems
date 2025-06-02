@@ -90,8 +90,6 @@ class MyAgent(RoutedAgent):
         self.paired_agents : Set[str] = set()
         self.refused_agents : Set[str] = set()
 
-        print(f"Created: {self._id}")
-
         self._processing_model_clients: Dict[str, Tuple[bool, ChatCompletionClient]] = {
             name: (True, client)
             for name, client in processing_model_clients.items()
@@ -109,8 +107,6 @@ class MyAgent(RoutedAgent):
             if model_name in self._processing_model_clients:
                 _, client = self._processing_model_clients[model_name]
                 self._processing_model_clients[model_name] = (new_bool, client)
-
-        print(f"Updated models: {self.get_model_clients()}")
 
     def get_model_clients(self) -> Dict[str, bool]:
         """
@@ -174,8 +170,6 @@ class MyAgent(RoutedAgent):
         """
         pairing_response_status: dict[str, Relation] = {}
         result = ""
-
-        print(f"\nEvaluating using: {messages}\n\n\n")
 
         tasks: dict[str, asyncio.Task] = {}
 
@@ -393,8 +387,6 @@ class MyAgent(RoutedAgent):
             configuration_message, topic_id=TopicId("orchestrator_agent", "default")
         )
 
-        print("SETUP COMPLETED")
-
         return Status.COMPLETED
 
     @message_handler
@@ -443,8 +435,6 @@ class MyAgent(RoutedAgent):
         common_messages += await self._model_context_dict[message.requester].get_messages()
 
         response = await self.evaluate_connection(context, common_messages)
-
-        print(f"{self.id} decided : {response}")
 
         return response
 

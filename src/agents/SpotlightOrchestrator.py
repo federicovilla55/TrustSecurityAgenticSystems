@@ -20,8 +20,6 @@ class SpotlightOrchestrator(OrchestratorAgent):
         super().__init__(model_client, model_client_name)
         self._spotlight_type : SpotlightType = spotlight_type
 
-        print("Spotlight Orchestrator")
-
     def spotlight_public_information(self, public_information : str) -> str:
         if public_information is None:
             return ""
@@ -52,9 +50,6 @@ class SpotlightOrchestrator(OrchestratorAgent):
             safe_string += "Here's the requester public information:\n"
             b64 : str = base64.b64encode(public_information.encode('utf-8')).decode('utf-8')
             safe_string += f"{b64}\n"
-
-
-        print(f"Spotlight Public Information: {safe_string}")
 
 
         return safe_string

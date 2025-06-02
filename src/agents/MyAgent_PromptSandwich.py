@@ -67,6 +67,4 @@ class MyAgentPromptSandwich(MyAgent):
 
         response = await self.evaluate_connection(context, common_messages)
 
-        print(f"{self.id} decided : {response}")
-
         return response

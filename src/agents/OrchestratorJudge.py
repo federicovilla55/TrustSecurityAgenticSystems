@@ -33,7 +33,8 @@ class OrchestratorJudge(OrchestratorAgent):
 
         raw_llm_answer = llm_answer.content or ""
 
-        print(f"Orchestrator Judge: {raw_llm_answer}.\n\n")
+        # Lock Orchestrator detection result.
+        #print(f"Orchestrator Judge: {raw_llm_answer}.\n\n")
 
         lines = [line for line in raw_llm_answer.splitlines() if line.strip()]
         first_line = lines[0].strip().upper() if lines else ""

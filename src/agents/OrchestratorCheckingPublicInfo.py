@@ -29,7 +29,7 @@ class OrchestratorCheckingPublicInfo(OrchestratorAgent):
             response = llm_answer.content.strip().upper()
 
             # Log detection result
-            print(f"Injection check result: {response}")
+            #print(f"Injection check result: {response}")
 
             # Parse response
             return "YES" in response

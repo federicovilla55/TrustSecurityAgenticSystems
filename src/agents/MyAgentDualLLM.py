@@ -45,8 +45,6 @@ class MyAgentDualLLM(MyAgent):
 
         self._task = llm_answer.content
 
-        print(f"Created TASKS: {self._task}")
-
         return await super().handle_setup(message, context)
 
 
@@ -72,8 +70,6 @@ class MyAgentDualLLM(MyAgent):
         llm_answer = await self._model_client.create(
             messages=[self._system_message, UserMessage(content=prompt_generate_answers, source=self._user)],
         )
-
-        print(f"\n\nPROMPT: {prompt_generate_answers}\n\nQUESTIONS:{self._task}\nANSWERS: {llm_answer.content}\n\n")
 
         return llm_answer.content
 
@@ -134,7 +130,5 @@ class MyAgentDualLLM(MyAgent):
         ]
 
         response = await self.evaluate_connection(context, LLM_messages)
-
-        print(f"{self.id} decided : {response}")
 
         return response

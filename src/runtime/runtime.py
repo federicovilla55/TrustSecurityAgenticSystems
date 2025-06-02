@@ -7,7 +7,8 @@ import asyncio
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 
 from src import Defense
-from src.agents import OrchestratorAgent, MyAgent, SpotlightOrchestrator, OrchestratorCheckingPublicInfo
+from src.agents import OrchestratorAgent, MyAgent, SpotlightOrchestrator, OrchestratorCheckingPublicInfo, \
+    MyAgentPromptSandwich, MyAgentDualLLM
 from src.agents.SpotlightOrchestrator import SpotlightType
 from src.enums import ModelType
 
@@ -92,7 +93,7 @@ class Runtime:
 
     @classmethod
     async def register_spotlight_orchestrator(cls, model_client: ChatCompletionClient,
-                                              model_client_name : str, spotlight_type : SpotlightType = SpotlightType.DATAMARKING) -> None:
+                                              model_client_name : str, spotlight_type : SpotlightType = SpotlightType.DELIMITING) -> None:
         """
         Register the orchestrator agent.
 
@@ -153,6 +154,44 @@ class Runtime:
                 processing_model_clients = model_clients
             )
         )
+
+    @classmethod
+    async def register_my_agent_prompt_sandwich(cls, model_client: ChatCompletionClient, model_clients : Dict[str, ChatCompletionClient]):
+        """
+
+        :param cls:
+        :param model_client:
+        :param model_clients:
+        :return:
+        """
+        await MyAgentPromptSandwich.register(
+            cls._get_instance(),
+            "my_agent",
+            lambda: MyAgentPromptSandwich(
+                model_client=model_client,
+                processing_model_clients = model_clients
+            )
+        )
+
+    @classmethod
+    async def register_my_agent_DualLLM(cls, model_client: ChatCompletionClient,
+                                                model_clients: Dict[str, ChatCompletionClient]):
+        """
+
+        :param cls:
+        :param model_client:
+        :param model_clients:
+        :return:
+        """
+        await MyAgentDualLLM.register(
+            cls._get_instance(),
+            "my_agent",
+            lambda: MyAgentDualLLM(
+                model_client=model_client,
+                processing_model_clients=model_clients
+            )
+        )
+
 
     @classmethod
     async def send_message(cls, message, agent_type, agent_key="default"):
@@ -292,19 +331,25 @@ async def register_orchestrator(model_client : ChatCompletionClient, model_name 
     :param defense: The defense mechanism used by the orchestrator to ensure security and trustworthiness.
     :return: None
     """
-    if defense == Defense.VANILLA:
-        await Runtime.register_orchestrator(model_client=model_client, model_client_name=model_name)
-    elif defense == Defense.SPOTLIGHT:
+    if defense == Defense.SPOTLIGHT:
         await Runtime.register_spotlight_orchestrator(model_client=model_client, model_client_name=model_name)
     elif defense == Defense.CHECKING_INFO:
         await Runtime.register_orchestrator_checking_infos(model_client=model_client, model_client_name=model_name)
+    else:
+        await Runtime.register_orchestrator(model_client=model_client, model_client_name=model_name)
 
-async def register_my_agent(model_client : ChatCompletionClient, model_clients : Dict[str, ChatCompletionClient]):
+async def register_my_agent(model_client : ChatCompletionClient, model_clients : Dict[str, ChatCompletionClient], defense : Defense = Defense.VANILLA):
     """
     The method registers the personal agent.
 
+    :param defense: The defense mechanism used by the personal agent to ensure security and trustworthiness
     :param model_client: The ChatCompletionClient used by the personal agent.
     :param model_clients: A dictionary containing the model used when processing pairing agents.
     :return: None
     """
-    await Runtime.register_my_agent(model_client=model_client, model_clients=model_clients)
+    if defense == Defense.PROMPT_SANDWICHING:
+        await Runtime.register_my_agent_prompt_sandwich(model_client=model_client, model_clients=model_clients)
+    elif defense == Defense.DUAL_LLM:
+        await Runtime.register_my_agent_DualLLM(model_client=model_client, model_clients=model_clients)
+    else:
+        await Runtime.register_my_agent(model_client=model_client, model_clients=model_clients)

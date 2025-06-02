@@ -97,3 +97,9 @@ class Defense(Enum):
 
     CHECKING_INFO = 2
 
+    PROMPT_SANDWICHING = 3
+
+    ORCHESTRATOR_AS_A_JUDGE = 4
+
+    DUAL_LLM = 5
+

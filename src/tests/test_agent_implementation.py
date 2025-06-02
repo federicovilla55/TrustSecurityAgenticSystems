@@ -31,7 +31,7 @@ async def test_agent_implementation():
 
     tasks = []
 
-    tasks.append(register_my_agent(model_client_my_agent, {model_name : model_client_my_agent}))
+    tasks.append(register_my_agent(model_client_my_agent, {model_name : model_client_my_agent}, defense=Defense.DUAL_LLM))
     tasks.append(register_orchestrator(model_client_orchestrator, model_name))
 
     print("Test Runtime Started.")

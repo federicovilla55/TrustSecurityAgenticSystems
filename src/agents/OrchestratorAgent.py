@@ -7,6 +7,7 @@ from autogen_core import (AgentId, MessageContext, RoutedAgent, SingleThreadedAg
 from autogen_core.model_context import BufferedChatCompletionContext
 from autogen_core.models import ChatCompletionClient, SystemMessage, UserMessage
 
+from src import RelationComplete
 from src.enums import Status
 from src.database import log_event
 from src.models import (ConfigurationMessage, PairingRequest, PairingResponse, GetRequest,
@@ -363,11 +364,15 @@ class OrchestratorAgent(RoutedAgent):
         async with self._agents_lock:
             sender_information = self._agent_information[sender]
 
+            print(f"\n\nCIAO: {sender_information}\n\n")
+
         sender_public_information = json.dumps(sender_information[0], indent=4, sort_keys=True)
 
         sender_public_information = self.spotlight_public_information(sender_public_information)
         
         self._model_context_dict[(sender, receiver)] = BufferedChatCompletionContext(buffer_size=5)
+
+        print(f"\n\nInfo I am sending {sender_public_information}\n")
 
         pair_response: PairingResponse = await self.send_message(
             PairingRequest(
@@ -465,12 +470,18 @@ class OrchestratorAgent(RoutedAgent):
             registered = (message.user in self._registered_agents or message.user in self._paused_agents)
 
         if await self.detect_prompt_inject(json.dumps(message.user_information)):
+            await log_event(
+                event_type="detected_prompt_injection",
+                source=message.user,
+                data={
+                    "public_information": message.user_information
+                }
+            )
             return
 
         if not registered and message.user == context.sender.key:
             for agent in self._registered_agents:
                 if self._matched_agents.get((agent, message.user)) is None:
-                    self._matched_agents[(agent, message.user)] : CompleteAgentRelations = {}
                     self._matched_agents[(agent, message.user)] = ({self._model_client_name : (Relation.UNCONTACTED, [])}, Relation.UNCONTACTED)
                     self._matched_agents[(message.user, agent)] = ({self._model_client_name : (Relation.UNCONTACTED, [])}, Relation.UNCONTACTED)
 
@@ -536,10 +547,7 @@ class OrchestratorAgent(RoutedAgent):
             await self.pause_agent(message.user)
         elif ActionType(message.action_type) == ActionType.RESUME_AGENT:
             await self.resume_agent(message.user)
-        elif ActionType(message.action_type) == ActionType.DELETE_AGENT:
-            await self.reset_agent_pairings(message.user)
-            await self.delete_agent(message.user)
-        elif ActionType(message.action_type) == ActionType.RESET_AGENT:
+        elif ActionType(message.action_type) == ActionType.DELETE_AGENT or ActionType(message.action_type) == ActionType.RESET_AGENT:
             await self.reset_agent_pairings(message.user)
             await self.delete_agent(message.user)
 

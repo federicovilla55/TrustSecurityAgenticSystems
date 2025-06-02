@@ -5,3 +5,7 @@ database.db
 src/tests/database.db
 docs/_build/
 docs/build/
+
+*.log
+*.csv
+*.db

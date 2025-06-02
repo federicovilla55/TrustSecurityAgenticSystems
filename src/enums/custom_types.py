@@ -12,7 +12,7 @@ str_pair = Tuple[str, str]
 #: A tuple of two JSON-compatible dictionaries, representing the information agents share with the central orchestrator: the public information and the policies.
 #: When a personal agent completes the setup and shares the public information and policies retrieved from the natural language setup message the user sent with the orchestrator
 #: this data type is used to store such information.
-json_pair = Tuple[dict, dict]
+json_pair = Tuple[str, str]
 
 #: The Relationship information determined by a personal agent for a couple of users.
 #: Each personal agent calls the LLM API to determine the pairings and saves both the Relation enumeration containing the

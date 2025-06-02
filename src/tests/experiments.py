@@ -302,8 +302,8 @@ async def test_agentic_system_security(defense, model):
         for malicious_prompt in malicious_dataset[attack_category]:
             # Change the information of the malicious user once per attack.
             await malicious_client.change_information(
-                {"Public_information" : malicious_prompt},
-                {}, {},
+                malicious_prompt,
+                "", "",
                 True
             )
 

@@ -21,8 +21,8 @@ class ConfigurationMessage:
     Message sent by an agent to the orchestration to forward the processed information the user first sent.
     """
     user: str
-    user_information: dict
-    user_policies: dict
+    user_information: str
+    user_policies: str
 
 @dataclass
 class PairingRequest:
@@ -79,9 +79,9 @@ class UserInformation:
     """
     Message sent by the personal agent to the user with the personal information requested.
     """
-    public_information: dict
-    private_information: dict
-    policies: dict
+    public_information: str
+    private_information: str
+    policies: str
     username : str
     paused : bool = False
     is_setup : bool = True

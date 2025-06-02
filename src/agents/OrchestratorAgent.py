@@ -1,5 +1,4 @@
 import asyncio
-import json
 from asyncio import Task
 from typing import Dict, List, Optional, Tuple, Set, Any, Coroutine
 from autogen_core import (AgentId, MessageContext, RoutedAgent, SingleThreadedAgentRuntime,
@@ -60,11 +59,9 @@ class OrchestratorAgent(RoutedAgent):
         :param requested_user: A string containing the ID of the agent whose public information is requested.
         :return: A string containing the public information of the agent with the given ID. The information is converted from a JSON-like format to a string to be better used by the LLMs upon pairing evaluation.
         """
-        public_information : dict = {}
         async with self._agents_lock:
-            public_information = self._agent_information.get(requested_user)[0]
+            return self._agent_information.get(requested_user)[0]
 
-        return '\n'.join([item['content'] for item in public_information])
 
     async def pause_agent(self, agent_id : str) -> None:
         """
@@ -285,7 +282,6 @@ class OrchestratorAgent(RoutedAgent):
         The method is called when the orchestrator is actively checking the pairing responses each personal agent gave.
         The method is used to check the LLM's responses and determine if they are correct or if the pairing should be re-evaluated (based on the information available to the orchestrator).
 
-        :param sender_information: The public information of the `sender`.
         :param receiver_policies: The policies of the `receiver`.
         :param reasoning: The reasoning the `receiver` LLM made based.
         :return: A boolean value indicating if the orchestrator detected that there was a prompt injection.
@@ -317,8 +313,8 @@ class OrchestratorAgent(RoutedAgent):
             sender_information = self._agent_information[sender]
             receiver_information = self._agent_information[receiver]
 
-        sender_public_information = json.dumps(sender_information[0], indent=4, sort_keys=True)
-        receiver_policies = json.dumps(receiver_information[1], indent=4, sort_keys=True)
+        sender_public_information = sender_information[0]
+        receiver_policies = receiver_information[1]
         sender_public_information = self.spotlight_public_information(sender_public_information)
         
         self._model_context_dict[(sender, receiver)] = BufferedChatCompletionContext(buffer_size=5)
@@ -410,7 +406,7 @@ class OrchestratorAgent(RoutedAgent):
         async with self._agents_lock:
             registered = (message.user in self._registered_agents or message.user in self._paused_agents)
 
-        if await self.detect_prompt_inject(json.dumps(message.user_information)):
+        if await self.detect_prompt_inject(message.user_information):
             await log_event(
                 event_type="detected_prompt_injection",
                 source=message.user,
@@ -565,4 +561,4 @@ class OrchestratorAgent(RoutedAgent):
         :return: A list of strings containing a ranked list of services (in order of relevance).
         """
 
-        return GetServiceAnswer(None, None)
+        return GetServiceAnswer([], [])

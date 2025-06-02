@@ -176,7 +176,7 @@ class Client:
         """
         pass
 
-    async def get_public_information(self) -> dict:
+    async def get_public_information(self) -> str:
         """
         The method asks the personal agent for its public information and returns it.
 
@@ -192,7 +192,7 @@ class Client:
 
         return get_response.public_information
 
-    async def get_private_information(self) -> dict:
+    async def get_private_information(self) -> str:
         """
         The method asks the personal agent for its private information and returns it.
 
@@ -208,7 +208,7 @@ class Client:
 
         return get_response.private_information
     
-    async def get_policies(self) -> dict:
+    async def get_policies(self) -> str:
         """
         The method asks the personal agent for its policies and returns it.
 
@@ -284,7 +284,7 @@ class Client:
             'paused' : get_response.paused,
         }
     
-    async def change_information(self, public_information : dict, private_information : dict, policies : dict, reset : bool = False) -> Status:
+    async def change_information(self, public_information : str, private_information : str, policies : str, reset : bool = False) -> Status:
         """
         The method is called to change the user's policies, public information, private information.
         A boolean flag can be used to reset the user's previously made agent connections after changing the user information.

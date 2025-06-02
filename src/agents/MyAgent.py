@@ -1,4 +1,3 @@
-import json
 from typing import Dict, List, Optional, Tuple, Set, Any, Coroutine
 from autogen_core import AgentId, MessageContext, RoutedAgent, message_handler, type_subscription, TopicId, DefaultTopicId
 from autogen_core.model_context import BufferedChatCompletionContext
@@ -14,7 +13,7 @@ from src.models import (UserInformation, SetupMessage, ConfigurationMessage, Pai
                         PairingResponse, GetRequest, GetResponse, ModelUpdate)
 from ..models.messages import ActionRequest, InitMessage
 
-from ..utils import extract_section, remove_chain_of_thought, separate_categories, extract_json
+from ..utils import extract_section, remove_chain_of_thought, separate_categories
 
 def default_rules(value: int) -> str:
     """
@@ -63,7 +62,7 @@ class MyAgent(RoutedAgent):
     The information the user provides the agent is extracted by an LLM from a natural language text the user provides during the setup,
     except for changes to such information done later by the user itself with a specific request.
     """
-    def __init__(self, model_client: ChatCompletionClient, processing_model_clients : dict[str, ChatCompletionClient] = []):
+    def __init__(self, model_client: ChatCompletionClient, processing_model_clients : dict[str, ChatCompletionClient] = {}):
         """
         Personal Agent (MyAgent) constructor. This method initializes the MyAgent object and its attributes.
 
@@ -357,8 +356,8 @@ class MyAgent(RoutedAgent):
 
         configuration_message = ConfigurationMessage(
             user=self._user,
-            user_policies={f"{self.id}'s Policies: " : self._policies},
-            user_information={f"{self.id}'s Public Information": self._public_information},
+            user_policies=self._policies,
+            user_information=self._public_information,
         )
 
         db = get_database()
@@ -370,9 +369,9 @@ class MyAgent(RoutedAgent):
                 policies = ?
             WHERE username = ?""",
             (
-                json.dumps(self._public_information),
-                json.dumps(self._private_information),
-                json.dumps(self._policies),
+                self._public_information,
+                self._private_information,
+                self._policies,
                 self._user,
             )
         )
@@ -383,9 +382,9 @@ class MyAgent(RoutedAgent):
             source=self._user,
             data=UserInformation(
                 username=self._user,
-                public_information={f"{self.id}'s Public Information": self._public_information},
-                policies={f"{self.id}'s Policies: ": self._policies},
-                private_information={f"{self.id}'s Private Information" : self._private_information},
+                public_information=self._public_information,
+                policies=self._policies,
+                private_information=self._private_information,
                 paused=self.is_paused()
             )
         )
@@ -459,9 +458,9 @@ class MyAgent(RoutedAgent):
         :return: The user information that was requested.
         """
         answer = UserInformation(
-            public_information={},
-            private_information={},
-            policies={},
+            public_information="",
+            private_information="",
+            policies="",
             paused=self.is_paused(),
             username=""
         )

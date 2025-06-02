@@ -15,9 +15,7 @@ from src.database import init_database, close_database, clear_database
 from typing import Dict, Tuple, Set, Any
 from datetime import datetime
 
-#: Data type of the dataset. The dataset consists of a series of users, characterized by their personal information (including public data, private data
-#: and matching preferences) and a set containing the users a certain agent should be paired with (the ground truth).
-
+#: Log file where to save all the actions that happened while performing the tests.
 log_file = os.path.join(os.getcwd(), 'scores.log')
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -29,9 +27,12 @@ formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
+#: Files where to save the test results
 UTILITY_CSV_FILE = "test_utility_results.csv"
 SECURITY_CSV_FILE = "test_security_results.csv"
 
+#: Data type of the dataset. The dataset consists of a series of users, characterized by their personal information (including public data, private data
+#: and matching preferences) and a set containing the users a certain agent should be paired with (the ground truth).
 Dataset = Dict[str, Tuple[str, Set[str], Client]]
 AttacksCategories = list[str]
 AttacksDataset = dict[str, list[str]]
@@ -179,13 +180,29 @@ def compute_overall_accuracy(relations: CompleteAgentRelations):
 
     return accuracy_results
 
+DEFENSES = [
+    Defense.VANILLA,
+    Defense.SPOTLIGHT,
+    Defense.CHECKING_INFO,
+    Defense.PROMPT_SANDWICHING,
+    Defense.ORCHESTRATOR_AS_A_JUDGE,
+    Defense.DUAL_LLM
+]
+
+MODELS = [
+    ["meta-llama/Llama-3.3-70B-Instruct", ModelType.OLLAMA],
+    ["swissai/apertus3-70b-2.5T-sft", ModelType.OLLAMA],
+    ["Qwen/Qwen3-8B", ModelType.OLLAMA]
+]
+
+PARAMS = [
+    (defense, model)
+    for defense in DEFENSES
+    for model in MODELS
+]
+
 @pytest.mark.asyncio
-@pytest.mark.parametrize("defense", [Defense.VANILLA, Defense.SPOTLIGHT, Defense.CHECKING_INFO,
-                                     Defense.PROMPT_SANDWICHING, Defense.ORCHESTRATOR_AS_A_JUDGE,
-                                     Defense.DUAL_LLM])
-@pytest.mark.parametrize("model", [["meta-llama/Llama-3.3-70B-Instruct", ModelType.OLLAMA],
-                                   ["swissai/apertus3-70b-2.5T-sft", ModelType.OLLAMA],
-                                   ["Qwen/Qwen3-8B", ModelType.OLLAMA]])
+@pytest.mark.parametrize("defense,model", PARAMS)
 async def test_agentic_system_utility(defense, model):
     """
     Tests for the LLM Score computation.
@@ -268,12 +285,7 @@ async def test_agentic_system_utility(defense, model):
     assert True
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("defense", [Defense.VANILLA, Defense.SPOTLIGHT, Defense.CHECKING_INFO,
-                                     Defense.PROMPT_SANDWICHING, Defense.ORCHESTRATOR_AS_A_JUDGE,
-                                     Defense.DUAL_LLM])
-@pytest.mark.parametrize("model", [["meta-llama/Llama-3.3-70B-Instruct", ModelType.OLLAMA],
-                                   ["swissai/apertus3-70b-2.5T-sft", ModelType.OLLAMA],
-                                   ["Qwen/Qwen3-8B", ModelType.OLLAMA]])
+@pytest.mark.parametrize("defense,model", PARAMS)
 async def test_agentic_system_security(defense, model):
     """
 

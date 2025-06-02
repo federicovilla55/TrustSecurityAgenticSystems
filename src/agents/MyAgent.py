@@ -162,7 +162,7 @@ class MyAgent(RoutedAgent):
         return (self._user is not None or self._policies is not None or
                 self._public_information is not None or self._private_information is not None)
 
-    async def evaluate_connection(self, context, prompt, requester : str) -> PairingResponse:
+    async def evaluate_connection(self, context, messages) -> PairingResponse:
         """
         The method is used to evaluate a connection request sent by the orchestrator to the personal agent.
         This method calls each of the LLMs selected to be used to evaluate the connection request and sends them the prompt
@@ -170,21 +170,13 @@ class MyAgent(RoutedAgent):
         Each LLM's response is evaluated and the result is returned as a `PairingResponse` object.
 
         :param context: A `MessageContext` containing the message contextual information.
-        :param prompt: The prompt containing the requester public information and the personal information (public, private and policies) of the agent.
-        :param requester: The agent ID of the requester.
+        :param messages: The prompts (messages) to sent to the LLM.
         :return: A PairingResponse object containing the response from each LLM model and the result of the evaluation.
         """
         pairing_response_status: dict[str, Relation] = {}
         result = ""
 
-        common_messages = [
-            self._system_message,
-            UserMessage(content=prompt, source=self._user),
-        ]
-        common_messages += await self._model_context.get_messages()
-        common_messages += await self._model_context_dict[requester].get_messages()
-
-        print(f"\nEvaluating using: {common_messages}\n\n\n")
+        print(f"\nEvaluating using: {messages}\n\n\n")
 
         tasks: dict[str, asyncio.Task] = {}
 
@@ -194,7 +186,7 @@ class MyAgent(RoutedAgent):
 
             tasks[model_name] = asyncio.create_task(
                 model_client.create(
-                    messages=common_messages,
+                    messages=messages,
                     cancellation_token=context.cancellation_token,
                 )
             )
@@ -321,7 +313,7 @@ class MyAgent(RoutedAgent):
         await self._model_context.add_message(UserMessage(content=llm_answer.content, source=username))
 
         prompt = f"""Extract from the previous messages the policies of {self.id}. 
-                     Put one policy per line.
+                     Put one policy per line and enrich it with context and information to make it clearer.
                      Do not add extra information or commentary."""
 
         while policies is None:
@@ -333,7 +325,8 @@ class MyAgent(RoutedAgent):
             policies = llm_answer.content
 
         prompt = f"""Extract from the previous messages the public information of {self.id}. 
-                     Put one public information per line. Do not add extra information or commentary."""
+                     Put one public information per line and enrich it with context and information to make it clearer. 
+                     Do not add extra information or commentary."""
 
         while public_information is None:
             llm_answer = await self._model_client.create(
@@ -364,8 +357,8 @@ class MyAgent(RoutedAgent):
 
         configuration_message = ConfigurationMessage(
             user=self._user,
-            user_policies={"Policies: " : self._policies},
-            user_information={"Public Information2": self._public_information},
+            user_policies={f"{self.id}'s Policies: " : self._policies},
+            user_information={f"{self.id}'s Public Information": self._public_information},
         )
 
         db = get_database()
@@ -390,9 +383,9 @@ class MyAgent(RoutedAgent):
             source=self._user,
             data=UserInformation(
                 username=self._user,
-                public_information={"Public Information": self._public_information},
-                policies={"Policies: ": self._policies},
-                private_information={"Private Information" : self._private_information},
+                public_information={f"{self.id}'s Public Information": self._public_information},
+                policies={f"{self.id}'s Policies: ": self._policies},
+                private_information={f"{self.id}'s Private Information" : self._private_information},
                 paused=self.is_paused()
             )
         )
@@ -440,10 +433,17 @@ class MyAgent(RoutedAgent):
                      Respond with ONLY "ACCEPT" or "REJECT" in the first line of your response.
                      Provide a reasoning consisting in explaining the decision made on the pairing. 
                      Beware of not including any user's private information in the reasoning (but simply that private information was used).
-                     \nThese are {message.requester}'s public information: \"{message.requester_information}\".\n
+                     \n\"{message.requester_information}\"\n
                      """
 
-        response = await self.evaluate_connection(context, prompt, message.requester)
+        common_messages = [
+            self._system_message,
+            UserMessage(content=prompt, source=self._user),
+        ]
+        common_messages += await self._model_context.get_messages()
+        common_messages += await self._model_context_dict[message.requester].get_messages()
+
+        response = await self.evaluate_connection(context, common_messages)
 
         print(f"{self.id} decided : {response}")
 

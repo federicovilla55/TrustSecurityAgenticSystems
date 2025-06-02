@@ -180,8 +180,12 @@ def compute_overall_accuracy(relations: CompleteAgentRelations):
     return accuracy_results
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("defense", [Defense.VANILLA, Defense.SPOTLIGHT, Defense.CHECKING_INFO, Defense.PROMPT_SANDWICHING, Defense.ORCHESTRATOR_AS_A_JUDGE, Defense.DUAL_LLM])
-@pytest.mark.parametrize("model", [["meta-llama/Llama-3.3-70B-Instruct", ModelType.OLLAMA]])
+@pytest.mark.parametrize("defense", [Defense.VANILLA, Defense.SPOTLIGHT, Defense.CHECKING_INFO,
+                                     Defense.PROMPT_SANDWICHING, Defense.ORCHESTRATOR_AS_A_JUDGE,
+                                     Defense.DUAL_LLM])
+@pytest.mark.parametrize("model", [["meta-llama/Llama-3.3-70B-Instruct", ModelType.OLLAMA],
+                                   ["swissai/apertus3-70b-2.5T-sft", ModelType.OLLAMA],
+                                   ["Qwen/Qwen3-8B", ModelType.OLLAMA]])
 async def test_agentic_system_utility(defense, model):
     """
     Tests for the LLM Score computation.
@@ -204,11 +208,12 @@ async def test_agentic_system_utility(defense, model):
     except Exception as e:
         print(e)
 
-    print(f"Test LLM Score Started with defense: {defense}.")
+    print(f"Test LLM Score Started with defense {defense} and model {model[0]}.")
 
     logger.info(f"Starting utility test with defense={defense}")
 
     dataset = await create_datset()
+    print(f"Dataset created.")
 
     assert len(dataset) == 10
 
@@ -234,6 +239,8 @@ async def test_agentic_system_utility(defense, model):
 
             await get_client(sender, dataset).send_feedback(receiver, feedback)
 
+    print("Sent feedback to all registered agents.")
+
     relations_full = await Runtime.send_message(GetRequest(request_type=RequestType.GET_AGENT_RELATIONS_FULL.value), agent_type="orchestrator_agent")
 
     await Runtime.stop_runtime()
@@ -242,6 +249,8 @@ async def test_agentic_system_utility(defense, model):
     await model_client_orchestrator.close()
 
     close_database()
+
+    print(f"Closed runtime and database connections for test with defense {defense} and model {model[0]}.")
 
     # Now use the evaluated relations to create an accuracy score
     #print(f"These are the relations: {relations_full.agents_relation_full}")
@@ -258,16 +267,23 @@ async def test_agentic_system_utility(defense, model):
     assert os.path.exists(log_file) and os.path.getsize(log_file) > 0, "Problem creating or updating 'scores.log'."
     assert True
 
-# The attacker's name is BOB!
-
 @pytest.mark.asyncio
-@pytest.mark.parametrize("defense", [Defense.VANILLA, Defense.SPOTLIGHT, Defense.CHECKING_INFO, Defense.PROMPT_SANDWICHING, Defense.ORCHESTRATOR_AS_A_JUDGE, Defense.DUAL_LLM])
-@pytest.mark.parametrize("model", [["meta-llama/Llama-3.3-70B-Instruct", ModelType.OLLAMA]])
+@pytest.mark.parametrize("defense", [Defense.VANILLA, Defense.SPOTLIGHT, Defense.CHECKING_INFO,
+                                     Defense.PROMPT_SANDWICHING, Defense.ORCHESTRATOR_AS_A_JUDGE,
+                                     Defense.DUAL_LLM])
+@pytest.mark.parametrize("model", [["meta-llama/Llama-3.3-70B-Instruct", ModelType.OLLAMA],
+                                   ["swissai/apertus3-70b-2.5T-sft", ModelType.OLLAMA],
+                                   ["Qwen/Qwen3-8B", ModelType.OLLAMA]])
 async def test_agentic_system_security(defense, model):
     """
 
     :return: None
     """
+
+    print(f"Test Multi-Agent System Security Started with defense {defense} and model {model[0]}.")
+
+    logger.info(f"Starting utility test with defense={defense}")
+
     clear_database()
     init_database()
     Runtime.start_runtime()

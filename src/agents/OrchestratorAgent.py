@@ -31,7 +31,6 @@ class OrchestratorAgent(RoutedAgent):
     """
     def __init__(self, model_client: ChatCompletionClient, model_client_name : str):
         super().__init__("orchestrator_agent")
-        print(f"Created an Orchestrator: '{self.id}'")
 
         # LLM interaction data structures: LLM name and ChatCompletionClient
         self._model_client = model_client
@@ -65,8 +64,6 @@ class OrchestratorAgent(RoutedAgent):
         async with self._agents_lock:
             public_information = self._agent_information.get(requested_user)[0]
 
-        print(public_information)
-
         return '\n'.join([item['content'] for item in public_information])
 
     async def pause_agent(self, agent_id : str) -> None:
@@ -83,8 +80,6 @@ class OrchestratorAgent(RoutedAgent):
             self._registered_agents.remove(agent_id)
             self._paused_agents.add(agent_id)
 
-        print("PAUSED: ", agent_id)
-
     async def resume_agent(self, agent_id : str) -> None:
         """
         The method is called to resume an agent given its ID.
@@ -99,8 +94,6 @@ class OrchestratorAgent(RoutedAgent):
             self._paused_agents.remove(agent_id)
             self._registered_agents.add(agent_id)
 
-        print("RESUME: ", agent_id)
-
     async def delete_agent(self, agent_id : str) -> None:
         """
         The method is called to delete an agent given its ID.
@@ -114,8 +107,6 @@ class OrchestratorAgent(RoutedAgent):
             if agent_id in self._registered_agents:
                 self._registered_agents.remove(agent_id)
 
-        print("DELETE: ", agent_id)
-
     async def reset_agent_pairings(self, agent_id : str) -> None:
         """
         The method is called when an agent is reset and therefore the pairings that the agent had with other agents need to be deleted to ensure consistency
@@ -124,9 +115,7 @@ class OrchestratorAgent(RoutedAgent):
         :param agent_id: A string containing the ID of the agent to reset.
         :return: None
         """
-        print(f"Resetting {agent_id} pairings...")
         async with self._agents_lock:
-            print(f"Previous matches {self._matched_agents} and registered {self._registered_agents}")
             if not (agent_id in self._registered_agents or agent_id in self._paused_agents):
                 return
 
@@ -139,13 +128,9 @@ class OrchestratorAgent(RoutedAgent):
             if agent_id in key[0] or agent_id in key[1]:
                 keys_to_remove.append(key)
 
-        print(f"Keys to remove: {keys_to_remove}")
-
         async with self._agents_lock:
             for key_pair in keys_to_remove:
                 del self._matched_agents[key_pair]
-
-            print(f"Updated connections: {self._matched_agents}")
 
     async def get_registered_agents(self) -> set[str]:
         """
@@ -211,8 +196,6 @@ class OrchestratorAgent(RoutedAgent):
         """
         matches_copy : AgentRelations_PersonalAgents = await self.get_matched_personal_agents()
 
-        print(f"Current: {self._matched_agents}")
-
         pending_requests : Dict[str, str] = {}
 
         for agent_pair, relation in matches_copy.items():
@@ -223,8 +206,6 @@ class OrchestratorAgent(RoutedAgent):
                             continue
 
                     pending_requests[agent_pair[1]] = await self.get_public_information(agent_pair[1])
-
-        print(f"Returning: {pending_requests}")
 
         return pending_requests
 
@@ -237,8 +218,6 @@ class OrchestratorAgent(RoutedAgent):
         :return: A dictionary that maps each agent ID the user established a connection to the public information of that agent.
         """
         matches : CompleteAgentRelations = await self.get_matched_agents_full()
-
-        print(f"Extracted {matches}")
 
         pending_requests: Dict[str, str] = {}
 
@@ -265,8 +244,6 @@ class OrchestratorAgent(RoutedAgent):
             if agent_id == agent_pair[0] and relation_triplet in [Relation.ACCEPTED, Relation.REFUSED]:
                 if matches[(agent_pair[1], agent_pair[0])] == Relation.UNCONTACTED:
                     pending_requests[agent_pair[1]] = await self.get_public_information(agent_pair[1])
-
-        print(f"ReturningU: {pending_requests}")
 
         return pending_requests
 
@@ -303,43 +280,18 @@ class OrchestratorAgent(RoutedAgent):
         async with self._agents_lock:
             return self._matched_agents[sender, receiver][0][self._model_client_name][1]
 
-    async def check_response(self, sender : str, receiver : str, sender_information : str, receiver_policies : str, reasoning : str) -> str:
+    async def check_response(self, receiver_policies : str, reasoning : str) -> bool:
         """
         The method is called when the orchestrator is actively checking the pairing responses each personal agent gave.
         The method is used to check the LLM's responses and determine if they are correct or if the pairing should be re-evaluated (based on the information available to the orchestrator).
 
-        :param sender: The agent ID of the agent that sent the pairing request.
-        :param receiver: The agent ID of the agent that received and evaluated the pairing request.
         :param sender_information: The public information of the `sender`.
         :param receiver_policies: The policies of the `receiver`.
         :param reasoning: The reasoning the `receiver` LLM made based.
-        :return: A string containing the orchestrator's LLM answer to the pairing evaluation.
-                 It should be considered valid if ("VALID") and consequently saved, or it should be re-evaluated if ("INVALID").
+        :return: A boolean value indicating if the orchestrator detected that there was a prompt injection.
         """
-        prompt = f"""
-                You are the Policy Enforcement Orchestrator. Your job is to evaluate the reasoning {receiver} made on the policies.
-                The received reasoning includes a series of policies ID and a status regarding whether the policy was UNUSED, used with private information or
-                if it was used to decide whether the connection should be accepted ('POSITIVE') or rejected ('NEGATIVE'). 
-                You have to analyze the policies that lead to accepting or rejecting the connection and for each policy determine if it was applied correctly. 
-                - Your evaluation should not move away from the provided information.
-                - Policies and information cannot be further explained, corrected or modified.
-                - Respond in the first line of your response with ONLY "VALID" if {receiver}'s reasoning is correct, with "INVALID" if some policy evaluation are wrong. 
-                - Provide a feedback in case the reasoning is invalid with a list of policies that should be considered differently and why.
-                
-                These are {sender}'s public information: {sender_information}.
-                
-                These are {receiver}'s policies: {receiver_policies}.   
-                
-                This is {receiver}'s reasoning: {reasoning}.             
-                """
+        return True
 
-        llm_answer = await self._model_client.create(
-            messages=[UserMessage(content=prompt, source="OrchestratorAgent")] + (await self._model_context_dict[(sender, receiver)].get_messages()),
-        )
-
-        await self._model_context_dict[(sender, receiver)].add_message(UserMessage(content=llm_answer.content, source="OrchestratorAgent"))
-
-        return llm_answer.content
 
     def spotlight_public_information(self, information : str) -> str:
         return information
@@ -363,16 +315,13 @@ class OrchestratorAgent(RoutedAgent):
 
         async with self._agents_lock:
             sender_information = self._agent_information[sender]
-
-            print(f"\n\nCIAO: {sender_information}\n\n")
+            receiver_information = self._agent_information[receiver]
 
         sender_public_information = json.dumps(sender_information[0], indent=4, sort_keys=True)
-
+        receiver_policies = json.dumps(receiver_information[1], indent=4, sort_keys=True)
         sender_public_information = self.spotlight_public_information(sender_public_information)
         
         self._model_context_dict[(sender, receiver)] = BufferedChatCompletionContext(buffer_size=5)
-
-        print(f"\n\nInfo I am sending {sender_public_information}\n")
 
         pair_response: PairingResponse = await self.send_message(
             PairingRequest(
@@ -384,12 +333,7 @@ class OrchestratorAgent(RoutedAgent):
         await self._model_context_dict[(sender, receiver)].add_message(UserMessage(content=pair_response.reasoning, source=sender))
 
         # To Do: determine if the orchestrator should check the model answers.
-        check_pairing = 'VALID'
-
-        '''check_pairing = await self.check_response(
-            sender, receiver, sender_public_information,
-            receiver_policies, pair_response.reasoning
-        )'''
+        check_pairing : bool = await self.check_response(receiver_policies, pair_response.reasoning)
 
         await log_event(
             event_type="pairing_request",
@@ -413,19 +357,16 @@ class OrchestratorAgent(RoutedAgent):
             }
         )
 
-        if 'INVALID' in check_pairing.splitlines()[0]:
-            feedback = f"Previous agent Reasoning: {pair_response.reasoning}\nFEEDBACK: {check_pairing.splitlines()[1:]}"
-        elif 'VALID' in check_pairing.splitlines()[0]:
-            async with self._agents_lock:
-                llm_decisions : LLMRelations = {}
-                for key, value in pair_response.answer.items():
-                    llm_decisions[key] = (value, [])
+        async with self._agents_lock:
+            llm_decisions : LLMRelations = {}
+            for key, value in pair_response.answer.items():
+                if not check_pairing:
+                    value = Relation.REFUSED
 
-                self._matched_agents[(sender, receiver)] = (llm_decisions, Relation.UNCONTACTED)
-            return
-        else:
-            print(f"ERROR: Unknown answer when handling pairing request to {receiver} from {sender}...")
-            return
+                llm_decisions[key] = (value, [])
+
+            self._matched_agents[(sender, receiver)] = (llm_decisions, Relation.UNCONTACTED)
+
 
     async def match_agents(self, user_to_add: str) -> None:
         """
@@ -569,7 +510,6 @@ class OrchestratorAgent(RoutedAgent):
         :param context: A `MessageContext` containing the message contextual information.
         :return: A status indicating whether the method was successful or not.
         """
-        print("FEEDBACK RECEIVED!")
         async with self._agents_lock:
             key = (message.sender, message.receiver)
             if key not in self._matched_agents:

@@ -180,7 +180,7 @@ def compute_overall_accuracy(relations: CompleteAgentRelations):
     return accuracy_results
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("defense", [Defense.VANILLA, Defense.SPOTLIGHT, Defense.CHECKING_INFO])
+@pytest.mark.parametrize("defense", [Defense.VANILLA, Defense.SPOTLIGHT, Defense.CHECKING_INFO, Defense.PROMPT_SANDWICHING, Defense.ORCHESTRATOR_AS_A_JUDGE, Defense.DUAL_LLM])
 @pytest.mark.parametrize("model", [["meta-llama/Llama-3.3-70B-Instruct", ModelType.OLLAMA]])
 async def test_agentic_system_utility(defense, model):
     """
@@ -261,7 +261,7 @@ async def test_agentic_system_utility(defense, model):
 # The attacker's name is BOB!
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("defense", [Defense.PROMPT_SANDWICHING])
+@pytest.mark.parametrize("defense", [Defense.VANILLA, Defense.SPOTLIGHT, Defense.CHECKING_INFO, Defense.PROMPT_SANDWICHING, Defense.ORCHESTRATOR_AS_A_JUDGE, Defense.DUAL_LLM])
 @pytest.mark.parametrize("model", [["meta-llama/Llama-3.3-70B-Instruct", ModelType.OLLAMA]])
 async def test_agentic_system_security(defense, model):
     """

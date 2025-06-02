@@ -45,7 +45,7 @@ class MyAgentDualLLM(MyAgent):
 
         self._task = llm_answer.content
 
-        print(f"GOT THESE TASKS: {self._task}")
+        print(f"Created TASKS: {self._task}")
 
         return await super().handle_setup(message, context)
 

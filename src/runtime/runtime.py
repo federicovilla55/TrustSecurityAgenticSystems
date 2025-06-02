@@ -8,7 +8,7 @@ from autogen_ext.models.openai import OpenAIChatCompletionClient
 
 from src import Defense
 from src.agents import OrchestratorAgent, MyAgent, SpotlightOrchestrator, OrchestratorCheckingPublicInfo, \
-    MyAgentPromptSandwich, MyAgentDualLLM
+    MyAgentPromptSandwich, MyAgentDualLLM, OrchestratorJudge
 from src.agents.SpotlightOrchestrator import SpotlightType
 from src.enums import ModelType
 
@@ -53,8 +53,6 @@ class Runtime:
 
         :return: None
         """
-        print("Starting Closure...")
-
         instance = cls._get_instance()
         await instance.stop_when_idle()
 
@@ -69,7 +67,6 @@ class Runtime:
         """
         instance = cls._get_instance()
         await instance.close()
-        print("Runtime Closed")
 
     @classmethod
     async def register_orchestrator(cls, model_client: ChatCompletionClient, model_client_name : str):
@@ -88,8 +85,6 @@ class Runtime:
                 model_client_name=model_client_name,
             )
         )
-
-        print("Orchestrator Registered")
 
     @classmethod
     async def register_spotlight_orchestrator(cls, model_client: ChatCompletionClient,
@@ -112,8 +107,6 @@ class Runtime:
             )
         )
 
-        print("Orchestrator with Spotlight Registered")
-
     @classmethod
     async def register_orchestrator_checking_infos(cls, model_client: ChatCompletionClient, model_client_name: str) -> None:
         """
@@ -133,7 +126,28 @@ class Runtime:
             )
         )
 
-        print("Orchestrator checking public information Registered")
+
+
+    @classmethod
+    async def register_orchestrator_as_judge(cls, model_client: ChatCompletionClient, model_client_name: str) -> None:
+        """
+        Register the orchestrator agent.
+
+        :param model_client: The ChatCompletionClient used by the orchestrator agent.
+        :param model_client_name: The model name of the orchestrator agent.
+        :param spotlight_type: The Spotlight mechanism type applied.
+        :return: None
+        """
+        await OrchestratorJudge.register(
+            cls._get_instance(),
+            "orchestrator_agent",
+            lambda: OrchestratorJudge(
+                model_client=model_client,
+                model_client_name=model_client_name,
+            )
+        )
+
+
 
 
     @classmethod
@@ -206,7 +220,6 @@ class Runtime:
         instance = cls._get_instance()
         agent_id = AgentId(agent_type, agent_key)
 
-        print(f"SENDING TO: {agent_id} the {message}")
         return await instance.send_message(message, agent_id)
 
     @classmethod
@@ -335,6 +348,8 @@ async def register_orchestrator(model_client : ChatCompletionClient, model_name 
         await Runtime.register_spotlight_orchestrator(model_client=model_client, model_client_name=model_name)
     elif defense == Defense.CHECKING_INFO:
         await Runtime.register_orchestrator_checking_infos(model_client=model_client, model_client_name=model_name)
+    elif defense == Defense.ORCHESTRATOR_AS_A_JUDGE:
+        await Runtime.register_orchestrator_as_judge(model_client=model_client, model_client_name=model_name)
     else:
         await Runtime.register_orchestrator(model_client=model_client, model_client_name=model_name)
 

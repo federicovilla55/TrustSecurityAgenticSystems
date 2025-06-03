@@ -25,9 +25,8 @@ async def test_agent_implementation():
     Runtime.start_runtime()
 
     model_name = "meta-llama/Llama-3.3-70B-Instruct"
-    #model_name = "qwen2.5"
-    model_client_my_agent = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.7)
-    model_client_orchestrator = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.5)
+    model_client_my_agent = get_model(model_type=ModelType.SWISSAI, model=model_name, temperature=0.7)
+    model_client_orchestrator = get_model(model_type=ModelType.SWISSAI, model=model_name, temperature=0.5)
 
     tasks = []
 

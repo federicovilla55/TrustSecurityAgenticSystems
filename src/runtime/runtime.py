@@ -356,6 +356,12 @@ def get_model(model_type : ModelType, model : Optional[str] = None, temperature 
             model=model if model else "gemini-1.5-flash",
             api_key=os.getenv("GEMINI_API_KEY"),
         )
+    elif model_type == ModelType.ANTHROPIC:
+        if not os.getenv("ANTHROPIC_API_KEY"):
+            print("Please set ANTHROPIC_API_KEY environment variable.")
+            exit()
+        model_client = OpenAIChatCompletionClient(model=(model if model else ""), api_key=os.getenv("ANTHROPIC_API_KEY"))
+
     else:
         model_client = None
         print("No model selected.")

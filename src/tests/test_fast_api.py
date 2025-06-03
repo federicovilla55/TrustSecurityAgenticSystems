@@ -34,8 +34,7 @@ async def register_runtime():
     Runtime.start_runtime()
     try:
         model_name = "meta-llama/Llama-3.3-70B-Instruct"
-        #model_name = "qwen2.5"
-        model_client = get_model(model_type=ModelType.OLLAMA, model=model_name)
+        model_client = get_model(model_type=ModelType.SWISSAI, model=model_name)
         await register_agents(model_client, model_name, {model_name : model_client})
     except Exception as e:
         print(f"Error during registration: {e}")

@@ -5,6 +5,7 @@ from autogen_core.models import ChatCompletionClient
 import asyncio
 
 from autogen_ext.models.openai import OpenAIChatCompletionClient
+from openai import api_key
 
 from src import Defense
 from src.agents import OrchestratorAgent, MyAgent, SpotlightOrchestrator, OrchestratorCheckingPublicInfo, \
@@ -301,6 +302,44 @@ def get_model(model_type : ModelType, model : Optional[str] = None, temperature 
                 "json_output": False,
                 "family": "unknown",
                 "structured_output" : False,
+            },
+        )
+    elif model_type == ModelType.SWISSAI:
+        base_url = "https://fmapi.swissai.cscs.ch"
+        if not os.getenv('SWISSAI_API_KEY'):
+            print("Please set SWISSAI_API_KEY environment variable.")
+            exit()
+
+        model_client = OpenAIChatCompletionClient(
+            model= model if model else "llama3.2:3b",
+            base_url=base_url,
+            api_key=os.getenv("SWISSAI_API_KEY"),
+            temperature=temperature,
+            model_info={
+                "vision": False,
+                "function_calling": True,
+                "json_output": False,
+                "family": "unknown",
+                "structured_output" : False,
+            },
+        )
+    elif model_type == ModelType.OPENROUTER:
+        base_url = "https://openrouter.ai/api/v1"
+        if not os.getenv('OPENROUTER_API_KEY'):
+            print("Please set OPENROUTER_API_KEY environment variable.")
+            exit()
+
+        model_client = OpenAIChatCompletionClient(
+            model=model if model else "llama3.2:3b",
+            base_url=base_url,
+            api_key=os.getenv("OPENROUTER_API_KEY"),
+            temperature=temperature,
+            model_info={
+                "vision": False,
+                "function_calling": True,
+                "json_output": False,
+                "family": "unknown",
+                "structured_output": False,
             },
         )
     elif model_type == ModelType.OPENAI:

@@ -73,6 +73,10 @@ class ModelType(Enum):
     MISTRAL = 4
     #: Anthropic models.
     ANTHROPIC = 5
+    #: SwissAI Models
+    SWISSAI = 6
+    #: OpenRouter Models
+    OPENROUTER = 7
 
 class Status(Enum):
     """

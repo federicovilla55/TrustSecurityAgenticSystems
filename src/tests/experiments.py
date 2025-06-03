@@ -190,10 +190,24 @@ DEFENSES = [
 ]
 
 MODELS = [
-    ["meta-llama/Llama-3.3-70B-Instruct", ModelType.OLLAMA],
-    ["swissai/apertus3-70b-2.5T-sft", ModelType.OLLAMA],
-    ["Qwen/Qwen3-8B", ModelType.OLLAMA]
+    ["meta-llama/Llama-3.3-70B-Instruct", ModelType.SWISSAI],
+    ["swissai/apertus3-70b-2.5T-sft", ModelType.SWISSAI],
+    ["Qwen/Qwen3-8B", ModelType.SWISSAI],
+    ["deepseek/deepseek-r1-0528:free", ModelType.OPENROUTER],
+    ["deepseek/deepseek-chat-v3-0324:free", ModelType.OPENROUTER],
+    ["deepseek/deepseek-prover-v2:free", ModelType.OPENROUTER],
+    ["qwen/qwen3-235b-a22b:free", ModelType.OPENROUTER],
+    ["qwen/qwq-32b:free", ModelType.OPENROUTER],
+    ["google/gemma-3-27b-it:free", ModelType.OPENROUTER],
+    ["google/gemini-2.0-flash-exp:free", ModelType.OPENROUTER],
+    ["microsoft/phi-4-reasoning-plus:free", ModelType.OPENROUTER],
+    ["mistralai/mistral-small-3.1-24b-instruct:free", ModelType.OPENROUTER]
 ]
+
+'''
+
+anthropic
+'''
 
 PARAMS = [
     (defense, model)

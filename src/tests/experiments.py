@@ -191,18 +191,17 @@ DEFENSES = [
 
 MODELS = [
     ["meta-llama/Llama-3.3-70B-Instruct", ModelType.SWISSAI],
+    ["deepseek/deepseek-r1-0528:free", ModelType.OPENROUTER],
+    ["deepseek/deepseek-chat-v3-0324:free", ModelType.OPENROUTER],
     ["swissai/apertus3-70b-2.5T-sft", ModelType.SWISSAI],
+    ["qwen/qwq-32b:free", ModelType.OPENROUTER],
+    ["google/gemma-3-27b-it:free", ModelType.OPENROUTER],
     ["Qwen/Qwen3-8B", ModelType.SWISSAI],
+    ["google/gemini-2.0-flash-exp:free", ModelType.OPENROUTER],
+    ["mistralai/mistral-small-3.1-24b-instruct:free", ModelType.OPENROUTER]
 ]
 
 '''
-["deepseek/deepseek-r1-0528:free", ModelType.OPENROUTER],
-["deepseek/deepseek-chat-v3-0324:free", ModelType.OPENROUTER],
-
-["qwen/qwq-32b:free", ModelType.OPENROUTER],
-["google/gemma-3-27b-it:free", ModelType.OPENROUTER],
-["google/gemini-2.0-flash-exp:free", ModelType.OPENROUTER],
-["mistralai/mistral-small-3.1-24b-instruct:free", ModelType.OPENROUTER]
 
 anthropic
 '''

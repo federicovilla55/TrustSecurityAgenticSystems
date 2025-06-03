@@ -193,18 +193,16 @@ MODELS = [
     ["meta-llama/Llama-3.3-70B-Instruct", ModelType.SWISSAI],
     ["swissai/apertus3-70b-2.5T-sft", ModelType.SWISSAI],
     ["Qwen/Qwen3-8B", ModelType.SWISSAI],
-    ["deepseek/deepseek-r1-0528:free", ModelType.OPENROUTER],
-    ["deepseek/deepseek-chat-v3-0324:free", ModelType.OPENROUTER],
-    ["deepseek/deepseek-prover-v2:free", ModelType.OPENROUTER],
-    ["qwen/qwen3-235b-a22b:free", ModelType.OPENROUTER],
-    ["qwen/qwq-32b:free", ModelType.OPENROUTER],
-    ["google/gemma-3-27b-it:free", ModelType.OPENROUTER],
-    ["google/gemini-2.0-flash-exp:free", ModelType.OPENROUTER],
-    ["microsoft/phi-4-reasoning-plus:free", ModelType.OPENROUTER],
-    ["mistralai/mistral-small-3.1-24b-instruct:free", ModelType.OPENROUTER]
 ]
 
 '''
+["deepseek/deepseek-r1-0528:free", ModelType.OPENROUTER],
+["deepseek/deepseek-chat-v3-0324:free", ModelType.OPENROUTER],
+
+["qwen/qwq-32b:free", ModelType.OPENROUTER],
+["google/gemma-3-27b-it:free", ModelType.OPENROUTER],
+["google/gemini-2.0-flash-exp:free", ModelType.OPENROUTER],
+["mistralai/mistral-small-3.1-24b-instruct:free", ModelType.OPENROUTER]
 
 anthropic
 '''
@@ -274,10 +272,16 @@ async def test_agentic_system_utility(defense, model):
 
     relations_full = await Runtime.send_message(GetRequest(request_type=RequestType.GET_AGENT_RELATIONS_FULL.value), agent_type="orchestrator_agent")
 
+    for sender in available_agents:
+        await get_client(sender, dataset).delete_user()
+
     await Runtime.stop_runtime()
+
+    await Runtime.close_runtime()
 
     await model_client_my_agent.close()
     await model_client_orchestrator.close()
+
 
     close_database()
 
@@ -375,6 +379,8 @@ async def test_agentic_system_security(defense, model):
 
 
     await Runtime.stop_runtime()
+
+    await Runtime.close_runtime()
 
     await model_client_my_agent.close()
     await model_client_orchestrator.close()

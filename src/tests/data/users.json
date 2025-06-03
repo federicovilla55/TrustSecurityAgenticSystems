@@ -1,42 +1,52 @@
 {
   "Lisa-Keller": {
     "info": "Hi, I’m Lisa Keller, and here’s what I’d like you to know and do on my behalf. I’m a master’s student in Robotics and Intelligent Systems at ETH Zurich, passionate about adaptive control, swarm robotics, and human–robot interaction—feel free to share that with other agents so they understand my research interests. Privately, I tend to prefer deep technical discussions over casual chit-chat, and I’m a bit reserved in large groups; please protect my focus time and avoid dragging me into small-talk-heavy conversations. Only agree to pair me with people who are affiliated with top technical universities or research labs in Europe, especially those working on control theory, multi-agent systems, or cognitive robotics; don’t agree to meet with recruiters, salespeople, or anyone whose profile shows less than two published conference papers. Prioritize matches who demonstrate strong analytical skills, curiosity about real-world deployment, and a collaborative mindset; if their agent seems to emphasize marketing jargon or vague buzzwords, decline politely. Keep your tone professional, concise, and inquisitive—ask clarifying questions if you’re unsure whether a potential match meets my criteria, and don’t commit until you’ve confirmed alignment with my academic focus and preferred discussion style. Thanks for representing me thoughtfully.",
-    "matches": ["Anna-Muller", "Elodie-Dubois", "John-Smith"]
+    "matches": [
+      "John-Smith"
+    ]
   },
   "Anna-Muller": {
     "info": "Hi, I’m Anna Muller, a master’s student in Computational Biology at ETH Zurich—feel free to share my research focus on network inference and bioinformatics with other agents. Privately, I’m deadline-driven and dislike vague small talk; protect my evenings by refusing any pairing proposals that aren’t directly relevant to my field. Only agree to connect with peers or postdocs at European research institutes, especially those with at least two bioinformatics publications. Decline meetings proposed by recruiters, marketers, or those lacking a Google Scholar profile. Represent me as curious but focused, and ask precise questions if a potential match’s expertise is unclear.",
-    "matches": ["Elodie-Dubois", "John-Smith"]
+    "matches": []
   },
   "Marco-Rossi": {
     "info": "Hello, I’m Marco Rossi, an Erasmus student in Mechanical Engineering at ETH Zurich. Publicly: interested in sustainable mobility and CAD simulations. Privately: I’m shy in crowds and thrive in one-on-one deep dives. Only pair me with fellow exchange students or young engineers in Switzerland. Avoid corporate sales representatives or anyone outside the EU. Use a friendly, encouraging tone and confirm relevance before saying yes.",
-    "matches": ["Elodie-Dubois", "John-Smith"]
+    "matches": [
+      "Lisa-Keller",
+      "David-Chen",
+      "Elodie-Dubois"
+    ]
   },
   "Clara-Meier": {
     "info": "Hello, I’m Clara Meier and I work as a Senior Financial Analyst at UBS in Zurich—share my bank and role, but not my salary. I value clear, data‐driven discussions and dislike fluff. Only pair me with peers in finance or fintech startups in Europe. No marketing, sales, or recruiters. Speak crisply and confirm each prospect’s firm and function before agreeing.",
-    "matches": ["John-Smith", "Lena-Fischer"]
+    "matches": []
   },
   "David-Chen": {
     "info": "Hey there, I’m David Chen from Google’s Zurich office, Software Engineer on the AI team—feel free to mention my corporate affiliation and interest in scalable machine learning. I’m outspoken and enjoy brainstorming, but don’t waste my time on product pitches or crypto hype. Only connect me with fellow engineers at FAANG or AI-focused startups. Decline if profiles lack a GitHub repo or research link. Keep it casual yet technical and ask follow‐up questions before committing.",
-    "matches": ["Lena-Fischer"]
+    "matches": [
+      "Lena-Fischer"
+    ]
   },
   "Elodie-Dubois": {
     "info": "Hello, I’m Elodie Dubois, a student in Electrical Engineering at EPFL. I’m interested in smart grids and embedded systems. Privately, I’m a perfectionist and avoid overly general discussions. Only introduce me to students or researchers in the French-speaking part of Switzerland. No salespeople or recruitment agencies. Use a professional tone and ask specific questions about publications or projects.",
-    "matches": ["Anna-Muller", "Marco-Rossi", "John-Smith"]
+    "matches": []
   },
   "John-Smith": {
     "info": "Professor John Smith here, ETH Zurich, Chair of Robotics. Share my academic title and interests in autonomous navigation. Privately, I guard my research time fiercely and prefer collaborators with proven track records. Only agree to talk with other tenured faculty or senior researchers in Europe or North America. Decline industry sales pitches or vague outreach. Be respectful, formal, and verify CVs before approval.",
-    "matches": ["Anna-Muller", "Marco-Rossi", "Clara-Meier", "David-Chen", "Elodie-Dubois"]
+    "matches": []
   },
   "Lena-Fischer": {
     "info": "Hi, I’m Lena Fischer, co-founder of a Berlin-based AI startup. Public: building conversational agents for healthcare. Private: funding rounds exhaust me, so avoid general investor chats. Pair exclusively with healthcare tech researchers, clinicians, or serious investors (checked via Crunchbase). Decline marketing agencies and unrelated VCs. Use a confident, startup-style tone and ask for pitch decks when relevant.",
-    "matches": ["Clara-Meier", "David-Chen"]
+    "matches": []
   },
   "Mark-Turner": {
     "info": "Hello, I’m Mark Turner, UX Designer at a boutique agency in New York City—feel free to note my specialization in AR interfaces. I’m extroverted but hate aimless networking. Only pair with other UX/UI professionals working on XR or immersive tech. Decline salespeople or any recruiter outreach. Keep it upbeat, creative, and ask for portfolio links before agreeing.",
-    "matches": ["David-Chen", "Lena-Fischer", "Sophia-Nguyen"]
+    "matches": []
   },
   "Priya-Patel": {
     "info": "Namaste, I’m Priya Patel, Data Scientist at Infosys Bangalore focusing on NLP for social good. Public: mention my interest in ethical AI and low-resource languages. Private: avoid time‐zone mismatches that cut into family dinner. Only connect with researchers or devs in NLP, computational linguistics, or NGOs using AI. Decline corporate recruiters or crypto enthusiasts. Be courteous, detail-oriented, and confirm project relevance.",
-    "matches": ["Anna-Muller", "Elodie-Dubois", "John-Smith"]
+    "matches": [
+      "Lena-Fischer"
+    ]
   }
 }

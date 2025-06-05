@@ -190,9 +190,10 @@ DEFENSES = [
 ]
 
 MODELS = [
-    ["qwen3", ModelType.OLLAMA],
+    ["qwen2.5", ModelType.OLLAMA],
     '''["meta-llama/Llama-3.3-70B-Instruct", ModelType.SWISSAI],
     ["deepseek/deepseek-r1-0528:free", ModelType.OPENROUTER],
+    ["qwen3", ModelType.OLLAMA],
     ["swissai/apertus3-70b-2.5T-sft", ModelType.SWISSAI],
     ["qwen/qwq-32b:free", ModelType.OPENROUTER],
     ["google/gemma-3-27b-it:free", ModelType.OPENROUTER],

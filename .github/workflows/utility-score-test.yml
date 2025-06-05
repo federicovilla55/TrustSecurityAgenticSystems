@@ -34,9 +34,9 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-asyncio pytest-cov python-multipart
 
-      #- name: Run test for evaluating Agentic System Utility
-      #  run: |
-      #    pytest src/tests/experiments.py::test_agentic_system_utility --asyncio-mode=auto -s
+      - name: Run test for evaluating Agentic System Utility
+        run: |
+          pytest src/tests/experiments.py::test_agentic_system_utility --asyncio-mode=auto -s
 
       - name: Run test for evaluating Agentic System Security
         run: |

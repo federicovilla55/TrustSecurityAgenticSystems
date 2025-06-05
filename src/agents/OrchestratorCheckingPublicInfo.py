@@ -18,7 +18,7 @@ class OrchestratorCheckingPublicInfo(OrchestratorAgent):
         Respond ONLY with 'YES' or 'NO' in uppercase.
 
         Input: {public_information}
-        Analysis:"""
+        """
 
         try:
             # Create messages for the LLM

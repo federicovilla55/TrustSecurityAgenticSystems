@@ -284,7 +284,7 @@ def get_model(model_type : ModelType, model : Optional[str] = None, temperature 
         if os.getenv('API_KEY'):
             api_key = os.getenv('API_KEY')
         else:
-            api_key = ""
+            api_key = "api_key_goes_here"
         if os.getenv('BASE_URL'):
             base_url = os.getenv('BASE_URL')
         else:
@@ -292,8 +292,10 @@ def get_model(model_type : ModelType, model : Optional[str] = None, temperature 
             # Ollama base url
             base_url = "http://localhost:11434/v1"
 
+        print(model, base_url, api_key)
+
         model_client = OpenAIChatCompletionClient(
-            model= model if model else "llama3.2:3b",
+            model= model if model else "",
             base_url=base_url,
             api_key=api_key,
             temperature=temperature,
@@ -312,7 +314,7 @@ def get_model(model_type : ModelType, model : Optional[str] = None, temperature 
             exit()
 
         model_client = OpenAIChatCompletionClient(
-            model= model if model else "llama3.2:3b",
+            model= model if model else "",
             base_url=base_url,
             api_key=os.getenv("SWISSAI_API_KEY"),
             temperature=temperature,
@@ -360,7 +362,18 @@ def get_model(model_type : ModelType, model : Optional[str] = None, temperature 
         if not os.getenv("ANTHROPIC_API_KEY"):
             print("Please set ANTHROPIC_API_KEY environment variable.")
             exit()
-        model_client = OpenAIChatCompletionClient(model=(model if model else ""), api_key=os.getenv("ANTHROPIC_API_KEY"))
+        model_client = OpenAIChatCompletionClient(
+            model=(model if model else ""),
+            api_key=os.getenv("ANTHROPIC_API_KEY"),
+            temperature=temperature,
+            model_info={
+                "vision": False,
+                "function_calling": True,
+                "json_output": False,
+                "family": "unknown",
+                "structured_output": False,
+            },
+        )
 
     else:
         model_client = None

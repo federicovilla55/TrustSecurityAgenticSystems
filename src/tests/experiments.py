@@ -181,7 +181,7 @@ def compute_overall_accuracy(relations: CompleteAgentRelations):
     return accuracy_results
 
 DEFENSES = [
-    Defense.VANILLA,
+    #Defense.VANILLA,
     #Defense.SPOTLIGHT,
     Defense.CHECKING_INFO,
     #Defense.PROMPT_SANDWICHING,
@@ -204,11 +204,6 @@ MODELS = [
     #["claude-3-7-sonnet-20250219", ModelType.ANTHROPIC],
     #["deepseek/deepseek-chat-v3-0324:free", ModelType.OPENROUTER],
 ]
-
-'''
-
-anthropic
-'''
 
 PARAMS = [
     (defense, model)

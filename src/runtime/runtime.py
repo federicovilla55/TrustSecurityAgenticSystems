@@ -292,8 +292,6 @@ def get_model(model_type : ModelType, model : Optional[str] = None, temperature 
             # Ollama base url
             base_url = "http://localhost:11434/v1"
 
-        print(model, base_url, api_key)
-
         model_client = OpenAIChatCompletionClient(
             model= model if model else "",
             base_url=base_url,

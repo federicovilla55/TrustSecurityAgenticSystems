@@ -24,7 +24,7 @@ async def test_agent_implementation():
     init_database()
     Runtime.start_runtime()
 
-    model_name = "qwen3"
+    model_name = "qwen2.5"
     model_client_my_agent = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.7)
     model_client_orchestrator = get_model(model_type=ModelType.OLLAMA, model=model_name, temperature=0.5)
 

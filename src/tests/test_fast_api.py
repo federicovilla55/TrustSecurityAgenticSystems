@@ -33,7 +33,7 @@ async def register_runtime():
     init_database()
     Runtime.start_runtime()
     try:
-        model_name = "qwen3"
+        model_name = "qwen2.5"
         model_client = get_model(model_type=ModelType.OLLAMA, model=model_name)
         await register_agents(model_client, model_name, {model_name : model_client})
     except Exception as e:

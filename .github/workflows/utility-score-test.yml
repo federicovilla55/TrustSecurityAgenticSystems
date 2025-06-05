@@ -55,4 +55,4 @@ jobs:
           name: results-${{ github.ref_name }}-zip
           path: |
             test_security_results.csv
-      #      test_utility_results.csv
+            test_utility_results.csv

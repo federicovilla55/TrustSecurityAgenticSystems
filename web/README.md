@@ -1,8 +1,8 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Web interface bootstrapped with [next.js](https://nextjs.org/)
 
 ## Getting Started
 
-First, run the development server:
+First, to run the developed frontend:
 
 ```bash
 npm run dev
@@ -16,21 +16,31 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Directory structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The pages boostrap a simple frontend that contains the basic agent functionalities, permitting a user to connect with the FastAPI backend.
 
-## Learn More
+### Authentication Page
 
-To learn more about Next.js, take a look at the following resources:
+The _Authentication_ Page, reachable at `/auth`, contains the logic for creating a new user and saving it in the database and to login with previously created credentials.
+This page is fundamental for getting JWT token, used for later endpoints interactions with the FastAPI backend.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Dashboard Page
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The _Dashboard_ page shows:
+- public information, 
+- private information,
+- policies,
+- connections established by an agent,
+- suggested connections,
+- sent connection requests.
 
-## Deploy on Vercel
+The two latter two elements buttons to express feedback on such connections (either `Accept` or `Reject`). 
+The user can modify the first three elements by clicking on the pencil button.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Settings Page
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The settings page shows: 
+- buttons to either `Pause`/`Resume` or `Delete` the personal agent
+- buttons to change the models used to evaluate the pairing connections
+- Edit box for the agent's public information, private information and policies.

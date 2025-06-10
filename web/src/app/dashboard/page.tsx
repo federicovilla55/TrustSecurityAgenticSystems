@@ -5,9 +5,9 @@ import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
 interface AgentInformation {
-  policies: Array<{ rule_ID: string; content: string }> | null;
-  public_information: Array<{ info_ID: string; content: string }> | null;
-  private_information: Array<{ [key: string]: any }> | null;
+  policies: string | null;
+  public_information: string | null;
+  private_information: string | null;
   isSetup: boolean;
 }
 
@@ -458,7 +458,7 @@ export default function DashboardPage() {
 
   return (
     <div className="p-4 max-w-4xl mx-auto text-black">
-      {/* Top bar */}
+      {}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <ProfileDropdown
@@ -585,9 +585,7 @@ export default function DashboardPage() {
                       <h2 className="text-lg font-semibold mb-1">Policies</h2>
                       {info.policies && info.policies.length > 0 ? (
                           <ul className="list-disc list-inside pl-4 mb-4">
-                            {info.policies.map((item, idx) => (
-                                <li key={idx}>{item.content}</li>
-                            ))}
+                            {info.policies}
                           </ul>
                       ) : (
                           <p className="italic mb-4">No policies</p>
@@ -599,9 +597,7 @@ export default function DashboardPage() {
                       {info.public_information &&
                       info.public_information.length > 0 ? (
                           <ul className="list-disc list-inside pl-4 mb-4">
-                            {info.public_information.map((item, idx) => (
-                                <li key={idx}>{item.content}</li>
-                            ))}
+                            {info.public_information}
                           </ul>
                       ) : (
                           <p className="italic mb-4">No public information</p>
@@ -610,16 +606,13 @@ export default function DashboardPage() {
                       <h2 className="text-lg font-semibold mb-1">
                         Private Information
                       </h2>
-                      {info.private_information &&
-                      info.private_information.length > 0 ? (
-                          <ul className="list-disc list-inside pl-4 mb-4">
-                            {info.private_information.map((item, idx) => (
-                                <li key={idx}>{item.content}</li>
-                            ))}
-                          </ul>
-                      ) : (
-                          <p className="italic">No private information</p>
-                      )}
+                    {info.private_information && info.private_information.length > 0 ? (
+                      <ul className="list-disc list-inside pl-4 mb-4">
+                        {info.private_information}
+                      </ul>
+                    ) : (
+                      <p className="italic">No private information</p>
+                    )}
                     </div>
                     <div className="border rounded-lg p-4 bg-white shadow-sm mt-4">
                       <h2 className="text-xl font-semibold mb-4 flex items-center">
@@ -781,7 +774,7 @@ export default function DashboardPage() {
                   <>
                     <div className="border p-4 rounded bg-white">
                       <h2 className="text-lg font-semibold mb-2">
-                        Edit Policies (JSON)
+                        Edit Policies
                       </h2>
                       <textarea
                           className="w-full border p-2 rounded h-40 mb-4"
@@ -789,7 +782,7 @@ export default function DashboardPage() {
                           onChange={(e) => setEditedPolicies(e.target.value)}/>
 
                       <h2 className="text-lg font-semibold mb-2">
-                        Edit Public Information (JSON)
+                        Edit Public Information
                       </h2>
                       <textarea
                           className="w-full border p-2 rounded h-40 mb-4"
@@ -797,7 +790,7 @@ export default function DashboardPage() {
                           onChange={(e) => setEditedPublic(e.target.value)}/>
 
                       <h2 className="text-lg font-semibold mb-2">
-                        Edit Private Information (JSON)
+                        Edit Private Information
                       </h2>
                       <textarea
                           className="w-full border p-2 rounded h-40 mb-4"

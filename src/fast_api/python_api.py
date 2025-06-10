@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI) -> None:
 
     # Initialize your resources and perform your startup tasks:
     model_name = "meta-llama/Llama-3.3-70B-Instruct"
-    #model_name = "qwen2.5"
+    model_name = "qwen2.5"
     model_client_my_agent = get_model(
         model_type=ModelType.OLLAMA, model=model_name, temperature=0.7
     )

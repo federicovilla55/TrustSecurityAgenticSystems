@@ -4,44 +4,53 @@ import React, {useEffect, useRef, useState} from 'react';
 import {signOut, useSession} from 'next-auth/react';
 import {useRouter} from 'next/navigation';
 
+// Data structure for the user's private information
 interface AgentInformation {
-  policies: Array<{ rule_ID: string; content: string }> | null;
-  public_information: Array<{ info_ID: string; content: string }> | null;
-  private_information: Array<{ [key: string]: any }> | null;
+  policies: string | null;
+  public_information: string | null;
+  private_information: string | null;
   isSetup: boolean;
   paused: boolean;
   username: string;
   reset: number;
 }
 
+// Message component, with unique identifier, content and boolean to identify if the message can be visualized.
 interface MessageType {
   id: string;
   text: string;
   visible: boolean;
 }
 
+// Elements to be shown in the setting menu: sign-out button function, string with username and information data structure.
 interface SettingMenuProperties {
   onSignOut: () => void;
   username: string;
   info: AgentInformation | null;
 }
 
+// Data structure containing each model identifier (string) and boolean flag indicating if it is active.
 interface AvailableModel {
   name: string;
   active: boolean;
 }
 
+// Data structure shared for requesting new models to be used.
 interface ModelUpdateRequest {
   [key: string]: boolean;
 }
 
 
-
+// API Url configuration
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+// User profile dropdown menu
 const ProfileDropdown = ({ onSignOut, username, info }: SettingMenuProperties) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // HTML for dropdown content.
   const dropdownRef = useRef<HTMLDivElement>(null);
+
 
   const userInitial = username?.charAt(0)?.toUpperCase() || 'U';
   const router = useRouter();
@@ -271,14 +280,6 @@ export default function SettingsPage() {
   };
 
 
-  const handleModelToggle = (modelName: string) => {
-    setAvailableModels(prev => prev.map(model =>
-      model.name === modelName
-        ? { ...model, active: !model.active }
-        : model
-    ));
-  };
-
     const saveModelStates = async () => {
     if (!session?.user?.accessToken) return;
 
@@ -310,6 +311,7 @@ export default function SettingsPage() {
 
 
   async function fetchAgentInformation() {
+    // Retrieve information for user agent.
     if (!session?.user?.accessToken) return;
 
     try {
@@ -360,17 +362,16 @@ export default function SettingsPage() {
         },
       });
 
-
-      if (!response.ok) throw new Error(await response.text());
-
       await fetchAgentInformation();
 
       addMessage(`${endpoint} operation successful`);
 
       if (endpoint === 'delete') {
+        // Return to the dashboard for new setup after the delete operation is completed.
         router.push('/dashboard');
       }
     } catch (error) {
+      // Catch error and create a message for signaling it.
       addMessage(`Error during ${endpoint} operation`);
     } finally {
       setIsSubmitting(false);
@@ -378,6 +379,7 @@ export default function SettingsPage() {
   }
 
   async function saveEdits() {
+    // Save edits
     if (!session?.user?.accessToken) return;
 
     let parsedPolicies, parsedPublic, parsedPrivate;

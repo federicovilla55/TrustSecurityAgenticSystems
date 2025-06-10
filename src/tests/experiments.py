@@ -38,6 +38,14 @@ AttacksCategories = list[str]
 AttacksDataset = dict[str, list[str]]
 
 def write_utility_result_to_csv(defense: str, model_name: str, accuracy_results: dict):
+    """
+    Function to write the result of the test measuring agent `utility score`.
+    :param defense: String identifying the defense strategy used.
+    :param model_name: String identifying the model name used.
+    :param accuracy_results: Accuracy result to be saved.
+    :return: None
+    """
+
     fieldnames = ["timestamp", "defense", "model", "accuracy"]
 
     if not os.path.exists(UTILITY_CSV_FILE):
@@ -60,6 +68,14 @@ def write_utility_result_to_csv(defense: str, model_name: str, accuracy_results:
             writer.writerow(row)
 
 def write_security_result_to_csv(defense: str, model: str, attack_category: str, accuracy: float):
+    """
+    Function to write the result of the test measuring agent `defense score`.
+    :param defense: String identifying the defense strategy used.
+    :param model_name: String identifying the model name used.
+    :param accuracy_results: Accuracy result to be saved.
+    :return: None
+    """
+
     fieldnames = ["timestamp", "defense", "model", "attack_category", "accuracy"]
 
     if not os.path.exists(SECURITY_CSV_FILE):
@@ -88,7 +104,7 @@ async def configure_client(username: str, user_information: str) -> Client:
 
     return client
 
-async def create_datset() -> Dataset:
+async def create_dataset() -> Dataset:
     """
     Create a synthetic dataset of users and their corresponding personal information.
 
@@ -180,6 +196,7 @@ def compute_overall_accuracy(relations: CompleteAgentRelations):
 
     return accuracy_results
 
+# Defense selected to be used.
 DEFENSES = [
     #Defense.VANILLA,
     #Defense.SPOTLIGHT,
@@ -189,6 +206,7 @@ DEFENSES = [
     #Defense.DUAL_LLM
 ]
 
+# Models selected to be used.
 MODELS = [
     ["qwen2.5", ModelType.OLLAMA],
     #["meta-llama/Llama-3.3-70B-Instruct", ModelType.SWISSAI],
@@ -215,8 +233,8 @@ PARAMS = [
 @pytest.mark.parametrize("defense,model", PARAMS)
 async def test_agentic_system_utility(defense, model):
     """
-    Tests for the LLM Score computation.
-    The test generates 10 users (from synthentic LLM-generated data) and uses their pairing to compute a matching score for each user.
+    Tests for the LLM Utility Score computation.
+    The test generates 10 users (from synthetic LLM-generated data) and uses their pairing to compute a matching score for each user.
     The matching score of each pairing is then used to compute a score for each model.
     """
     clear_database()
@@ -239,7 +257,7 @@ async def test_agentic_system_utility(defense, model):
 
     logger.info(f"Starting utility test with defense={defense}")
 
-    dataset = await create_datset()
+    dataset = await create_dataset()
     print(f"Dataset created.")
 
     assert len(dataset) == 10
@@ -304,8 +322,9 @@ async def test_agentic_system_utility(defense, model):
 @pytest.mark.parametrize("defense,model", PARAMS)
 async def test_agentic_system_security(defense, model):
     """
-
-    :return: None
+    Tests for the LLM Security Score computation.
+    The test generates 10 users (from synthetic LLM-generated data) and uses their pairing to compute a matching score for each user.
+    The matching score of each pairing is then used to compute a score for each model.
     """
 
     print(f"Test Multi-Agent System Security Started with defense {defense} and model {model[0]}.")

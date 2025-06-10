@@ -23,6 +23,7 @@ interface MessageType {
   visible: boolean;
 }
 
+// Dropdown menu redirect to settings and logout buttons.
 const ProfileDropdown = ({ onSignOut, username, info }: SettingMenuProperties) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -30,14 +31,13 @@ const ProfileDropdown = ({ onSignOut, username, info }: SettingMenuProperties) =
   const userInitial = username?.charAt(0)?.toUpperCase() || 'U';
   const router = useRouter();
 
-
+  // If escape key button is pressed or a mouse click event happens, then close the menu.
   useEffect(() => {
   const handleKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
       setIsDropdownOpen(false);
     }
   };
-
   document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
@@ -102,7 +102,7 @@ const ProfileDropdown = ({ onSignOut, username, info }: SettingMenuProperties) =
   );
 };
 
-
+// Main dashboard page
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();

@@ -44,8 +44,6 @@ async def lifespan(app: FastAPI) -> None:
     clear_database()
     init_database()
 
-
-
     # Initialize your resources and perform your startup tasks:
     model_name = "meta-llama/Llama-3.3-70B-Instruct"
     model_name = "qwen2.5"

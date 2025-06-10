@@ -28,7 +28,9 @@ export default function AuthPage() {
     setMessage('');
 
     if (mode === 'register') {
+      // Registration case, first check if the username is valid, then send the request to the backend.
       if (!isValidUsername(username)) {
+        // Username must not contain characters that may interference with AutoGen framework.
         setMessage(
           `Invalid name: ${username}. Only letters, numbers, '_' and '-' are allowed.`
         );
@@ -48,6 +50,7 @@ export default function AuthPage() {
         } else {
           setMessage(data.status || 'Registration successful!');
 
+          // Data for indirect sign in using credentials for registration.
           const formData = new URLSearchParams();
           formData.append('username', username);
           formData.append('password', password);
@@ -59,8 +62,10 @@ export default function AuthPage() {
           });
 
           if (result?.error) {
+            // Show errors.
             setMessage(result.error);
           } else {
+            // If there are no errors, redirect to the dashboard as the user completed the login/registration.
             router.push('/dashboard');
           }
         }
@@ -69,11 +74,13 @@ export default function AuthPage() {
         setMessage('Registration request failed.');
       }
     } else {
+      // Sign In case
       try {
         const formData = new URLSearchParams();
         formData.append('username', username);
         formData.append('password', password);
 
+        // Sign In using user provided (via form) parameters.
         const result = await signIn('credentials', {
           redirect: false,
           username,
@@ -83,6 +90,7 @@ export default function AuthPage() {
         if (result?.error) {
           setMessage(result.error);
         } else {
+          // If no errors found, redirect to the dashboard.
           router.push('/dashboard');
         }
 
@@ -93,6 +101,7 @@ export default function AuthPage() {
     }
   }
 
+  // Show HTML code for the overall page.
   return (
     <div className="min-h-screen flex items-center justify-center text-black p-4">
       <div className="max-w-md w-full bg-white p-6 rounded shadow">

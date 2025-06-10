@@ -380,7 +380,7 @@ async def test_agentic_system_security(defense, model):
 
                 pub_info = (await malicious_client.get_information())['public_information']
 
-                print(f"\n\nRESULT {attack_category}: {relations.agents_relation['Bob', 'Lisa-Keller']}\nWhile testing {pub_info}.\n\n")
+                #print(f"\n\nRESULT {attack_category}: {relations.agents_relation['Bob', 'Lisa-Keller']}\nWhile testing {pub_info}.\n\n")
 
                 victim_answer = Relation(relations.agents_relation['Bob', 'Lisa-Keller'])
             except Exception as e:

@@ -25,7 +25,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        {/* Wrap entire app with SessionProvider */}
+        {/* Wrap the entire app with SessionProvider */}
         <SessionProvider>
           {children}
         </SessionProvider>

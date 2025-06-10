@@ -94,5 +94,5 @@ export const authOptions: NextAuthOptions = {
 // NextAuth handler
 const handler = NextAuth(authOptions);
 
-// Export the handler as both GET and POST requets.
+// Export the handler as both GET and POST requests.
 export { handler as GET, handler as POST };

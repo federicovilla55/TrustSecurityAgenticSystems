@@ -137,7 +137,6 @@ class Runtime:
 
         :param model_client: The ChatCompletionClient used by the orchestrator agent.
         :param model_client_name: The model name of the orchestrator agent.
-        :param spotlight_type: The Spotlight mechanism type applied.
         :return: None
         """
         await OrchestratorJudge.register(
@@ -385,7 +384,7 @@ async def register_agents(model_client : ChatCompletionClient, model_name : str,
     The method registers the personal agent and the orchestrator agent.
 
     :param model_client: A ChatCompletionClient, an instance of the specified model.
-    :param model_name: the name of the model.
+    :param model_name: The name of the model.
     :param model_clients: A dictionary containing the model used when processing pairing agents.
     :return: None
     """

@@ -1,7 +1,6 @@
-// middleware.ts
 import { withAuth } from 'next-auth/middleware';
 
-// This ensures only authenticated users can visit /dashboard or /settings
+// Ensure only authenticated users can use /dashboard or /settings
 export default withAuth({
   pages: {
     signIn: '/auth'

@@ -126,7 +126,7 @@ const ProfileDropdown = ({ onSignOut, username, info }: SettingMenuProperties) =
   );
 };
 
-
+// Main function for the settings page
 export default function SettingsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -420,6 +420,7 @@ export default function SettingsPage() {
 
   if (!info) return <p>Loading...</p>;
 
+  // Overall HTML content shown
   return (
     <div className="p-4 max-w-4xl mx-auto text-black">
       <div className="flex items-center justify-between mb-6">

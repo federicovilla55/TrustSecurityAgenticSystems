@@ -3,14 +3,15 @@ import { DefaultSession, DefaultUser } from 'next-auth';
 import { JWT } from 'next-auth/jwt';
 import NextAuth from 'next-auth';
 
+// Interface for user authentication.
 declare module 'next-auth' {
+  // User profile is identified by its ID and access token
   interface User extends DefaultUser {
-    // Make ID optional, if you don’t have an actual user ID
     id?: string;
     accessToken?: string;
-    // Add more fields if needed
   }
 
+  // Data structure identifying the session
   interface Session {
     user: {
       name: string;
@@ -21,6 +22,7 @@ declare module 'next-auth' {
 }
 
 declare module 'next-auth/jwt' {
+  // Data structure identifying the JWT.
   interface JWT {
     id?: string;
     accessToken?: string;

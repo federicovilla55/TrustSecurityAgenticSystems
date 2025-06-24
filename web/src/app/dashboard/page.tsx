@@ -245,7 +245,8 @@ export default function DashboardPage() {
           },
         });
         const data = await response.json();
-        console.log(response)
+        console.log(response);
+        console.log("RELA:", data)
         setEstablishedRelations(data.relations);
       } catch (error) {
         console.error('Failed to load established relations:', error);

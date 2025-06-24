@@ -218,10 +218,17 @@ class OrchestratorAgent(RoutedAgent):
 
         pending_requests: Dict[str, str] = {}
 
+        print(f"Agent {agent_id} established relations:")
+
         for agent_pair, complete_relation in matches.items():
-            if agent_id == agent_pair[0] and complete_relation[1] == Relation.USER_ACCEPTED:
-                if matches[(agent_pair[1], agent_pair[0])][1] == Relation.USER_ACCEPTED:
+            print(f"Agent pair: {agent_pair}, Relation: {complete_relation}, {complete_relation[1]}")
+            if agent_id == agent_pair[0] and Relation(complete_relation[1]) == Relation.USER_ACCEPTED:
+                print(f"Agent {agent_pair[0]} accepted the relation with {agent_pair[1]}, {matches[(agent_pair[1], agent_pair[0])][1]}")
+                if Relation(matches[(agent_pair[1], agent_pair[0])][1]) == Relation.USER_ACCEPTED:
+                    print(f"ADDED {(agent_pair[1], agent_pair[0])}...")
                     pending_requests[agent_pair[1]] = await self.get_public_information(agent_pair[1])
+
+        print(f"REQ: {pending_requests}")
 
         return pending_requests
 
@@ -520,6 +527,8 @@ class OrchestratorAgent(RoutedAgent):
                 self._matched_agents[key][0],
                 message.feedback
             )
+
+        print(f"Received feedback from {message.sender} for {message.receiver}: {message.feedback}")
 
         await log_event(
             event_type="human_feedback",

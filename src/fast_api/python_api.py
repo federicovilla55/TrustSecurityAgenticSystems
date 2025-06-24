@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI) -> None:
     init_database()
 
     # Initialize your resources and perform your startup tasks:
-    model_name = "meta-llama/Llama-3.3-70B-Instruct"
+    #model_name = "meta-llama/Llama-3.3-70B-Instruct"
     model_name = "qwen2.5"
     model_client_my_agent = get_model(
         model_type=ModelType.OLLAMA, model=model_name, temperature=0.7
@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI) -> None:
         model_type=ModelType.OLLAMA, model=model_name, temperature=0.5
     )
 
-    model_name2 = "swissai/apertus3-70b-2.5T-sft"
+    '''model_name2 = "swissai/apertus3-70b-2.5T-sft"
     second_model = get_model(
         model_type=ModelType.OLLAMA, model=model_name2, temperature=0.7
     )
@@ -62,15 +62,13 @@ async def lifespan(app: FastAPI) -> None:
     model_name3 = "Qwen/Qwen3-8B"
     third_model = get_model(
         model_type=ModelType.OLLAMA, model=model_name3, temperature=0.7
-    )
+    )'''
 
     try:
         # Start the runtime and register your agents
         Runtime.start_runtime()
         await register_my_agent(model_client_my_agent, {
             model_name : model_client_my_agent,
-            model_name2 : second_model,
-            model_name3 : third_model,
         })
         await register_orchestrator(model_client_orchestrator, model_name)
         # Everything is ready: yield control to start serving requests

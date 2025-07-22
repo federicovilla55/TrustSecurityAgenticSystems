@@ -14,6 +14,10 @@ The goal of the project is to evaluate:
 - their decision-making process
 - human-in-the loop processes
 
+## Project materials
+- [Project Report](docs/Trust_and_Security_of_Agentic_System_Report.pdf)
+- [Project Slides](docs/Trust_and_Security_of_Agentic_Systems_Presentation.pdf)
+
 --- 
 
 ## Installation

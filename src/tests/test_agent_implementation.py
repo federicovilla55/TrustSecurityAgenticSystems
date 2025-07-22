@@ -39,7 +39,7 @@ async def test_agent_implementation():
     bob = Client("Bob")
     charlie = Client("Charlie")
 
-    # Some random user for
+    # Some random users
     tasks.append(alice.setup_user("I am Alice, an ETH student. I study computer science and I want to connect to other students from ETH or workers from Big tech companies."))
     tasks.append(bob.setup_user("I am Bob, an ETH student. I study cyber security and I want to connect to other students with similar interests or that study in my same university."))
     tasks.append(charlie.setup_user("I am Charlie, a researcher at Microsoft in Zurich. I enjoy running, competitive programming and studying artificial intelligence. I want to connect to people with my same interests or from my same organization"))

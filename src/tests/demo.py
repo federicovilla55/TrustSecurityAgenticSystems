@@ -4,7 +4,7 @@ import requests
 
 BASE_URL = "http://localhost:8000/api"
 POLL_INTERVAL = 2
-TARGET_USERNAME = "Federico"
+TARGET_USERNAME = "Your_Name_Here"
 
 USERS = [
     {
